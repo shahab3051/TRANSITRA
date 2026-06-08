@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transitra Pro — Smart Transport System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #04080f;
+  --surface: #0a1322;
+  --surface2: #0f1d30;
+  --surface3: #162540;
+  --border: rgba(0,200,255,0.1);
+  --border2: rgba(255,255,255,0.06);
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --warn: #f59e0b;
+  --danger: #f43f5e;
+  --text: #ddeeff;
+  --text2: #8aa8c8;
+  --muted: #3d5a78;
+  --glow: 0 0 30px rgba(0,212,255,0.2);
+  --glow-p: 0 0 30px rgba(124,58,237,0.25);
+  --glow-g: 0 0 30px rgba(16,185,129,0.2);
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.025) 1px,transparent 1px);background-size:55px 55px;pointer-events:none;z-index:0;animation:gridScroll 25s linear infinite}
+@keyframes gridScroll{0%{background-position:0 0}100%{background-position:55px 55px}}
+.blob{position:fixed;border-radius:50%;filter:blur(110px);opacity:0.09;pointer-events:none;z-index:0;animation:blobDrift 10s ease-in-out infinite}
+.blob-1{width:600px;height:600px;background:#00d4ff;top:-200px;right:-150px}
+.blob-2{width:450px;height:450px;background:#7c3aed;bottom:-100px;left:-150px;animation-delay:4s}
+.blob-3{width:350px;height:350px;background:#10b981;top:40%;left:35%;animation-delay:8s}
+@keyframes blobDrift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(15px,-25px) scale(1.04)}}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:3px}
+
+/* ===== LOGIN OVERLAY ===== */
+#loginOverlay{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;animation:none}
+#loginOverlay.hiding{animation:overlayHide 0.5s ease forwards}
+@keyframes overlayHide{to{opacity:0;pointer-events:none;visibility:hidden}}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 40px;width:100%;max-width:440px;position:relative;z-index:1;animation:loginBoxIn 0.6s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes loginBoxIn{from{opacity:0;transform:translateY(30px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo .brand{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;letter-spacing:-1px}
+.login-logo .brand span{color:var(--accent)}
+.login-logo p{color:var(--text2);font-size:0.85rem;margin-top:6px}
+.login-tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface2);border-radius:var(--radius-sm);padding:4px;margin-bottom:28px;gap:4px}
+.login-tab{border:none;background:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:500;padding:10px;border-radius:9px;cursor:pointer;transition:all 0.3s}
+.login-tab.active{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-weight:700}
+.form-field{margin-bottom:16px}
+.form-field label{display:block;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);margin-bottom:7px}
+.form-field input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:13px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;transition:all 0.3s}
+.form-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,0.08)}
+.form-field input::placeholder{color:var(--muted)}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;padding:15px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;margin-top:8px;letter-spacing:0.3px}
+.login-btn:hover{box-shadow:var(--glow);transform:translateY(-2px)}
+.login-divider{text-align:center;color:var(--muted);font-size:0.8rem;margin:18px 0;position:relative}
+.login-divider::before,.login-divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border2)}
+.login-divider::before{left:0}.login-divider::after{right:0}
+.social-login{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.social-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;padding:11px;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;display:flex;align-items:center;justify-content:center;gap:7px}
+.social-btn:hover{border-color:var(--accent);color:var(--accent)}
+.demo-hint{text-align:center;margin-top:18px;font-size:0.77rem;color:var(--muted)}
+.demo-hint b{color:var(--accent)}
+
+/* ===== HEADER ===== */
+header{position:sticky;top:0;z-index:200;background:rgba(4,8,15,0.88);backdrop-filter:blur(22px);border-bottom:1px solid var(--border);padding:0 36px;height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.45rem;letter-spacing:-0.5px;display:flex;align-items:center;gap:9px;flex-shrink:0}
+.logo-mark{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:0.95rem;box-shadow:var(--glow)}
+.logo span{color:var(--accent)}
+nav{display:flex;gap:3px;background:var(--surface);padding:4px;border-radius:12px;border:1px solid var(--border2)}
+nav button{background:none;border:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;padding:8px 14px;border-radius:9px;cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+nav button:hover{color:var(--text);background:var(--surface2)}
+nav button.nav-active{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-weight:700}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sys-badge{display:flex;align-items:center;gap:6px;font-size:0.75rem;color:var(--accent3);padding:5px 12px;border:1px solid rgba(16,185,129,0.2);border-radius:20px;background:rgba(16,185,129,0.05)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent3);animation:pdot 2s ease-in-out infinite}
+@keyframes pdot{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,0.5)}50%{box-shadow:0 0 0 6px rgba(16,185,129,0)}}
+
+/* Notification bell */
+.notif-btn{position:relative;width:38px;height:38px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;font-size:1rem}
+.notif-btn:hover{border-color:var(--accent)}
+.notif-count{position:absolute;top:-4px;right:-4px;background:var(--danger);color:#fff;font-size:0.6rem;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+
+/* Profile avatar */
+.avatar-btn{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#000;cursor:pointer;transition:all 0.3s;flex-shrink:0}
+.avatar-btn:hover{transform:scale(1.08);box-shadow:var(--glow)}
+
+/* ===== NOTIFICATION PANEL ===== */
+.notif-panel{position:fixed;top:76px;right:20px;width:360px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);z-index:500;box-shadow:0 20px 60px rgba(0,0,0,0.4);display:none;animation:dropIn 0.3s ease}
+.notif-panel.open{display:block}
+@keyframes dropIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.notif-header{padding:18px 20px 14px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center}
+.notif-header h4{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
+.mark-read{background:none;border:none;color:var(--accent);font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+.notif-list{max-height:380px;overflow-y:auto;padding:10px}
+.notif-item{display:flex;gap:12px;padding:13px;border-radius:12px;margin-bottom:6px;transition:all 0.2s;cursor:pointer;border:1px solid transparent}
+.notif-item:hover{background:var(--surface2);border-color:var(--border2)}
+.notif-item.unread{background:rgba(0,212,255,0.04);border-color:rgba(0,212,255,0.1)}
+.notif-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.ni-info{background:rgba(0,212,255,0.1)}
+.ni-warn{background:rgba(245,158,11,0.1)}
+.ni-success{background:rgba(16,185,129,0.1)}
+.ni-danger{background:rgba(244,63,94,0.1)}
+.notif-text .n-title{font-size:0.85rem;font-weight:600;margin-bottom:3px}
+.notif-text .n-desc{font-size:0.75rem;color:var(--text2);line-height:1.4}
+.notif-text .n-time{font-size:0.68rem;color:var(--muted);margin-top:4px}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px}
+
+/* ===== MAIN ===== */
+main{position:relative;z-index:1}
+section{display:none;padding:44px 36px;animation:secIn 0.35s ease}
+section.active{display:block}
+@keyframes secIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.sec-header{margin-bottom:32px}
+.sec-header h2{font-family:'Syne',sans-serif;font-size:1.9rem;font-weight:800;letter-spacing:-1px;margin-bottom:6px}
+.sec-header p{color:var(--text2);font-size:0.88rem}
+.card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:26px}
+.card-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:20px;display:flex;align-items:center;gap:9px}
+.c-icon{width:32px;height:32px;border-radius:9px;background:rgba(0,212,255,0.1);display:flex;align-items:center;justify-content:center;font-size:0.95rem}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 20px;box-shadow:var(--glow);z-index:9998;display:flex;align-items:center;gap:11px;font-size:0.85rem;transform:translateX(120%);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1);max-width:300px}
+.toast.show{transform:translateX(0)}
+
+/* ===== HOME ===== */
+.hero{max-width:860px;margin:0 auto;text-align:center;padding:50px 0 36px}
+.hero-tag{display:inline-flex;align-items:center;gap:7px;font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);border:1px solid rgba(0,212,255,0.2);padding:5px 14px;border-radius:20px;margin-bottom:26px;background:rgba(0,212,255,0.04);animation:fadeUp 0.5s ease 0.1s both}
+.hero h1{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(2.2rem,5.5vw,4rem);line-height:1.06;letter-spacing:-2px;margin-bottom:22px;animation:fadeUp 0.5s ease 0.2s both}
+.hero h1 .hl{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:1rem;color:var(--text2);max-width:480px;margin:0 auto 36px;line-height:1.7;animation:fadeUp 0.5s ease 0.3s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.hero-btns{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;animation:fadeUp 0.5s ease 0.4s both}
+.btn-p{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:0.88rem;padding:13px 26px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:7px;box-shadow:var(--glow)}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(0,212,255,0.35)}
+.btn-s{background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;font-weight:500;font-size:0.88rem;padding:13px 26px;border:1px solid var(--border2);border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:7px}
+.btn-s:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:50px 0;animation:fadeUp 0.5s ease 0.5s both}
+.stat-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:24px;text-align:center;transition:all 0.3s;position:relative;overflow:hidden;cursor:default}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0;transition:opacity 0.3s}
+.stat-card:hover{transform:translateY(-4px);box-shadow:var(--glow)}.stat-card:hover::before{opacity:1}
+.stat-num{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin-bottom:7px}
+.stat-lbl{font-size:0.8rem;color:var(--text2)}
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;animation:fadeUp 0.5s ease 0.6s both}
+.feat-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:26px;transition:all 0.3s;cursor:pointer;overflow:hidden;position:relative}
+.feat-card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,212,255,0.04),transparent);opacity:0;transition:opacity 0.3s}
+.feat-card:hover{transform:translateY(-5px);border-color:var(--accent);box-shadow:var(--glow)}.feat-card:hover::after{opacity:1}
+.f-icon{width:48px;height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:16px}
+.fi-b{background:rgba(0,212,255,0.1)}.fi-p{background:rgba(124,58,237,0.1)}.fi-g{background:rgba(16,185,129,0.1)}.fi-r{background:rgba(244,63,94,0.1)}.fi-y{background:rgba(245,158,11,0.1)}.fi-w{background:rgba(255,255,255,0.06)}
+.feat-card h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:8px}
+.feat-card p{font-size:0.83rem;color:var(--text2);line-height:1.6}
+.divider{display:flex;align-items:center;gap:14px;margin:40px 0 22px}
+.divider h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;white-space:nowrap}
+.div-line{flex:1;height:1px;background:var(--border2)}
+
+/* ===== PROFILE PANEL ===== */
+.profile-panel{position:fixed;top:0;right:0;bottom:0;width:340px;background:var(--surface);border-left:1px solid var(--border);z-index:600;transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);overflow-y:auto}
+.profile-panel.open{transform:translateX(0)}
+.pp-header{padding:24px;border-bottom:1px solid var(--border2);position:sticky;top:0;background:var(--surface);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between}
+.pp-header h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem}
+.close-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);width:30px;height:30px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.close-btn:hover{border-color:var(--danger);color:var(--danger)}
+.pp-body{padding:24px}
+.pp-avatar{text-align:center;margin-bottom:24px}
+.pp-av-circle{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;color:#000;border:3px solid var(--accent);box-shadow:var(--glow)}
+.pp-name{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.pp-email{font-size:0.8rem;color:var(--text2)}
+.pp-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);color:var(--accent);font-size:0.72rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-top:8px}
+.pp-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px}
+.pp-stat{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:14px 10px;text-align:center}
+.pp-stat-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--accent)}
+.pp-stat-lbl{font-size:0.68rem;color:var(--text2);margin-top:2px}
+.pp-section-title{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:12px}
+.pp-menu-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:11px;cursor:pointer;transition:all 0.2s;margin-bottom:4px;border:1px solid transparent}
+.pp-menu-item:hover{background:var(--surface2);border-color:var(--border2)}
+.pp-menu-icon{width:34px;height:34px;border-radius:9px;background:rgba(0,212,255,0.08);display:flex;align-items:center;justify-content:center;font-size:1rem}
+.pp-menu-label{font-size:0.88rem;font-weight:500;flex:1}
+.pp-menu-arrow{color:var(--muted);font-size:0.8rem}
+.logout-item{margin-top:10px}
+.logout-item .pp-menu-icon{background:rgba(244,63,94,0.08)}
+.logout-item .pp-menu-label{color:var(--danger)}
+.pp-pref-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border2)}
+.pp-pref-row:last-child{border:none}
+.pp-pref-label{font-size:0.85rem}
+.toggle{width:44px;height:24px;background:var(--surface3);border-radius:12px;cursor:pointer;position:relative;transition:background 0.3s;border:none}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left 0.3s;box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+.toggle.on::after{left:23px}
+
+/* ===== BOOKING ===== */
+.booking-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1100px;margin:0 auto}
+.transport-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
+.t-opt{background:var(--surface2);border:2px solid var(--border2);border-radius:13px;padding:14px 8px;text-align:center;cursor:pointer;transition:all 0.3s}
+.t-opt:hover{border-color:var(--accent)}
+.t-opt.sel{border-color:var(--accent);background:rgba(0,212,255,0.07);box-shadow:var(--glow)}
+.t-opt .ti{font-size:1.5rem;display:block;margin-bottom:5px}
+.t-opt .tn{font-size:0.75rem;font-weight:600;color:var(--text2)}
+.t-opt.sel .tn{color:var(--accent)}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2);margin-bottom:7px}
+.fg input,.fg select{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 15px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;transition:all 0.3s;appearance:none}
+.fg input:focus,.fg select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,0.07)}
+.fg input::placeholder{color:var(--muted)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.swap-wrap{display:flex;align-items:flex-end;gap:10px}
+.swap-wrap .fg{flex:1}
+.swap-btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all 0.3s;flex-shrink:0;margin-bottom:0}
+.swap-btn:hover{border-color:var(--accent);color:var(--accent);transform:rotate(180deg)}
+.book-btn{width:100%;background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;font-family:'Syne',sans-serif;font-weight:800;font-size:0.95rem;padding:15px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;margin-top:8px;box-shadow:var(--glow)}
+.book-btn:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(0,212,255,0.4)}
+.ticket-wrap{display:none;margin-top:18px;background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--accent);border-radius:var(--radius);overflow:hidden;box-shadow:var(--glow);animation:tickAnim 0.5s cubic-bezier(0.34,1.56,0.64,1)}
+@keyframes tickAnim{from{opacity:0;transform:scale(0.92) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.tk-head{background:linear-gradient(135deg,var(--accent),#0099cc);padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+.tk-head span{font-family:'Syne',sans-serif;font-weight:800;color:#000;font-size:0.95rem}
+.tk-body{padding:22px}
+.tk-route{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px dashed var(--border2)}
+.tk-city{flex:1}.tk-city .cl{font-size:0.68rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px}.tk-city .cn{font-family:'Syne',sans-serif;font-size:1.15rem;font-weight:700;margin-top:2px}
+.tk-arrow{color:var(--accent);font-size:1.3rem}
+.tk-details{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tk-det .dl{font-size:0.68rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px}.tk-det .dv{font-weight:600;font-size:0.9rem;margin-top:2px}
+.tk-qr{text-align:center;margin-top:16px;padding-top:16px;border-top:1px dashed var(--border2);font-size:0.72rem;color:var(--text2)}
+.rides-list{display:flex;flex-direction:column;gap:10px}
+.ride-item{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;display:flex;align-items:center;gap:12px;transition:all 0.3s;cursor:pointer}
+.ride-item:hover{border-color:var(--accent);transform:translateX(3px)}
+.r-icon{width:40px;height:40px;border-radius:10px;background:rgba(0,212,255,0.08);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.r-info{flex:1}.r-route{font-weight:600;font-size:0.86rem;margin-bottom:2px}.r-time{font-size:0.74rem;color:var(--text2)}
+.r-status{font-size:0.68rem;font-weight:700;padding:3px 9px;border-radius:20px}
+.s-ok{background:rgba(16,185,129,0.1);color:var(--accent3);border:1px solid rgba(16,185,129,0.2)}
+.s-pend{background:rgba(0,212,255,0.07);color:var(--accent);border:1px solid rgba(0,212,255,0.15)}
+
+/* ===== PAYMENT ===== */
+.pay-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1000px;margin:0 auto}
+.pay-summary{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);border-radius:var(--radius);padding:28px;position:sticky;top:90px}
+.pay-summary h3{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border2)}
+.pay-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-size:0.88rem}
+.pay-row .pr-lbl{color:var(--text2)}
+.pay-row .pr-val{font-weight:600}
+.pay-total{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:18px;border-top:1px solid var(--border2)}
+.pay-total .pt-lbl{font-family:'Syne',sans-serif;font-weight:700}
+.pay-total .pt-val{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--accent)}
+.payment-methods{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.pay-method{background:var(--surface2);border:2px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:all 0.3s;text-align:center}
+.pay-method:hover{border-color:var(--accent)}
+.pay-method.sel-pay{border-color:var(--accent);background:rgba(0,212,255,0.06)}
+.pm-icon{font-size:1.6rem;display:block;margin-bottom:5px}
+.pm-name{font-size:0.78rem;font-weight:600;color:var(--text2)}
+.pay-method.sel-pay .pm-name{color:var(--accent)}
+.card-input-wrap{position:relative}
+.card-input-wrap input{padding-right:50px}
+.card-logo{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:1.1rem}
+.pay-now-btn{width:100%;background:linear-gradient(135deg,var(--accent3),#059669);color:#fff;font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;padding:16px;border:none;border-radius:var(--radius-sm);cursor:pointer;transition:all 0.3s;box-shadow:var(--glow-g);letter-spacing:0.3px;margin-top:6px}
+.pay-now-btn:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(16,185,129,0.4)}
+.pay-secure{text-align:center;font-size:0.72rem;color:var(--muted);margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}
+.pay-success{display:none;text-align:center;padding:40px 20px;animation:tickAnim 0.5s ease}
+.pay-success .check{font-size:4rem;margin-bottom:16px;animation:checkPop 0.5s cubic-bezier(0.34,1.56,0.64,1) 0.2s both}
+@keyframes checkPop{from{transform:scale(0)}to{transform:scale(1)}}
+.pay-success h3{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:8px}
+.pay-success p{color:var(--text2);font-size:0.88rem;line-height:1.6}
+.pay-ref{background:var(--surface2);border-radius:10px;padding:10px 16px;display:inline-block;font-family:monospace;font-size:0.9rem;color:var(--accent);margin-top:12px;border:1px solid var(--border)}
+
+/* ===== ROUTES ===== */
+.rsearch-wrap{position:relative;margin-bottom:24px}
+.rsearch-wrap input{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 18px 14px 48px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.95rem;outline:none;transition:all 0.3s}
+.rsearch-wrap input:focus{border-color:var(--accent);box-shadow:var(--glow)}
+.rsearch-wrap .si{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:1rem;color:var(--muted)}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:26px}
+.chip{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.3s}
+.chip:hover,.chip.on{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,0.05)}
+.routes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.rc{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:20px;transition:all 0.3s;cursor:pointer;animation:cardIn 0.3s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.rc:hover{border-color:var(--accent);transform:translateY(-4px);box-shadow:var(--glow)}
+.rc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px}
+.rc-cities{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
+.rc-badge{font-size:0.67rem;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:1px}
+.b-bus{background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2)}
+.b-train{background:rgba(124,58,237,0.1);color:#a78bfa;border:1px solid rgba(124,58,237,0.2)}
+.b-taxi{background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2)}
+.b-ferry{background:rgba(16,185,129,0.1);color:var(--accent3);border:1px solid rgba(16,185,129,0.2)}
+.rc-meta{display:flex;gap:14px;margin-bottom:13px}
+.rc-meta span{font-size:0.76rem;color:var(--text2);display:flex;align-items:center;gap:4px}
+.rc-bar{height:3px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-bottom:12px}
+.rc-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width 0.9s ease}
+.rc-foot{display:flex;justify-content:space-between;align-items:center}
+.rc-price{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--accent)}
+.rc-seats{font-size:0.74rem;color:var(--text2)}
+.bk-btn{background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);color:var(--accent);font-weight:600;font-size:0.76rem;padding:7px 14px;border-radius:9px;cursor:pointer;transition:all 0.3s}
+.bk-btn:hover{background:var(--accent);color:#000}
+
+/* ===== WEATHER ===== */
+.weather-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1000px;margin:0 auto}
+.weather-main{background:linear-gradient(135deg,rgba(0,212,255,0.08),rgba(124,58,237,0.06));border:1px solid var(--border);border-radius:var(--radius);padding:30px;text-align:center}
+.weather-city-sel{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 16px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.9rem;width:100%;margin-bottom:24px;outline:none;appearance:none}
+.weather-icon-big{font-size:4.5rem;margin-bottom:10px;display:block;animation:weatherFloat 3s ease-in-out infinite}
+@keyframes weatherFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.weather-temp{font-family:'Syne',sans-serif;font-size:3.5rem;font-weight:800;line-height:1;margin-bottom:6px}
+.weather-desc{font-size:1rem;color:var(--text2);margin-bottom:20px;text-transform:capitalize}
+.weather-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}
+.ws-item{background:rgba(0,0,0,0.2);border-radius:12px;padding:14px 10px;text-align:center;border:1px solid var(--border2)}
+.ws-val{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--accent)}
+.ws-lbl{font-size:0.7rem;color:var(--text2);margin-top:3px}
+.route-weather-list{display:flex;flex-direction:column;gap:12px}
+.rw-item{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:16px;display:flex;align-items:center;gap:14px;transition:all 0.3s}
+.rw-item:hover{border-color:var(--accent);transform:translateX(3px)}
+.rw-icon{font-size:1.8rem;flex-shrink:0}
+.rw-info{flex:1}
+.rw-route{font-weight:600;font-size:0.88rem;margin-bottom:3px}
+.rw-cond{font-size:0.78rem;color:var(--text2)}
+.rw-temp{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--accent)}
+.weather-alert{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius-sm);padding:14px 16px;display:flex;gap:10px;margin-top:14px;border-radius:var(--radius-sm)}
+.wa-icon{font-size:1.2rem;flex-shrink:0}
+.wa-text{font-size:0.8rem;color:var(--warn);line-height:1.5}
+.forecast-row{display:flex;gap:10px;margin-top:14px;overflow-x:auto;padding-bottom:4px}
+.forecast-day{background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:12px;text-align:center;min-width:72px;flex-shrink:0}
+.fd-day{font-size:0.7rem;color:var(--text2);margin-bottom:6px}
+.fd-icon{font-size:1.3rem;margin-bottom:5px}
+.fd-temp{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:var(--accent)}
+
+/* ===== REVIEWS ===== */
+.reviews-layout{display:grid;grid-template-columns:1fr 1.6fr;gap:24px;max-width:1100px;margin:0 auto}
+.rating-overview{background:linear-gradient(135deg,var(--surface),var(--surface2));border:1px solid var(--border);border-radius:var(--radius);padding:28px;text-align:center}
+.big-rating{font-family:'Syne',sans-serif;font-size:4rem;font-weight:800;color:var(--accent);line-height:1;margin-bottom:6px}
+.star-row{font-size:1.4rem;margin-bottom:8px;letter-spacing:2px}
+.rating-count{font-size:0.82rem;color:var(--text2);margin-bottom:22px}
+.rating-bars{text-align:left;margin-top:18px}
+.rb-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.rb-label{font-size:0.78rem;color:var(--text2);width:20px;text-align:right;flex-shrink:0}
+.rb-track{flex:1;height:7px;background:var(--surface3);border-radius:5px;overflow:hidden}
+.rb-fill{height:100%;background:linear-gradient(90deg,var(--warn),#f59e0b);border-radius:5px;transition:width 1s ease}
+.rb-count{font-size:0.72rem;color:var(--text2);width:28px;flex-shrink:0}
+.write-review{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:20px;margin-top:18px}
+.write-review h4{font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;margin-bottom:14px}
+.star-input{display:flex;gap:5px;margin-bottom:14px;cursor:pointer}
+.star-input span{font-size:1.5rem;color:var(--muted);transition:all 0.2s;cursor:pointer}
+.star-input span.lit{color:var(--warn)}
+.star-input span:hover,.star-input span:hover ~ span{color:var(--warn) !important}
+.review-ta{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;resize:none;outline:none;height:90px;transition:all 0.3s}
+.review-ta:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,0.06)}
+.submit-rev{background:linear-gradient(135deg,var(--warn),#d97706);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;padding:10px 20px;border:none;border-radius:9px;cursor:pointer;transition:all 0.3s;margin-top:10px}
+.submit-rev:hover{transform:translateY(-2px);box-shadow:0 0 20px rgba(245,158,11,0.3)}
+.reviews-list{display:flex;flex-direction:column;gap:14px}
+.rev-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:20px;transition:all 0.3s}
+.rev-card:hover{border-color:var(--border);transform:translateY(-2px)}
+.rev-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.rev-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:#000;flex-shrink:0}
+.rev-meta{flex:1}
+.rev-name{font-weight:600;font-size:0.9rem;margin-bottom:2px}
+.rev-info{font-size:0.74rem;color:var(--text2)}
+.rev-stars{font-size:0.9rem;letter-spacing:1px}
+.rev-text{font-size:0.84rem;color:var(--text2);line-height:1.65;margin-bottom:10px}
+.rev-tags{display:flex;gap:6px;flex-wrap:wrap}
+.rev-tag{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:0.68rem;font-weight:500;padding:3px 9px;border-radius:20px}
+.rev-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border2)}
+.rev-helpful{font-size:0.74rem;color:var(--text2);cursor:pointer;transition:color 0.2s}
+.rev-helpful:hover{color:var(--accent3)}
+.rev-date{font-size:0.72rem;color:var(--muted)}
+.filter-sort{display:flex;gap:10px;margin-bottom:18px;align-items:center}
+.sort-select{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:8px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.8rem;outline:none;cursor:pointer}
+
+/* ===== TRACKING ===== */
+.track-layout{display:grid;grid-template-columns:1fr 340px;gap:22px;max-width:1200px;margin:0 auto;align-items:start}
+#map{height:540px;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--glow);overflow:hidden}
+.leaflet-tile{filter:brightness(0.65) saturate(0.3) hue-rotate(200deg)}
+.leaflet-container{background:#0a1322 !important}
+.track-panel{display:flex;flex-direction:column;gap:14px}
+.vehicle-item{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:13px;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:11px;margin-bottom:8px}
+.vehicle-item:last-child{margin-bottom:0}
+.vehicle-item:hover,.vehicle-item.sel-v{border-color:var(--accent);background:rgba(0,212,255,0.04)}
+.v-icon{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.vi-b{background:rgba(0,212,255,0.1)}.vi-t{background:rgba(124,58,237,0.1)}.vi-x{background:rgba(251,191,36,0.1)}
+.v-det{flex:1}.v-id{font-weight:700;font-size:0.85rem;margin-bottom:2px}.v-rt{font-size:0.72rem;color:var(--text2)}
+.v-spd{text-align:right}.sp-v{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;color:var(--accent);display:block}.sp-u{font-size:0.62rem;color:var(--muted)}
+.live-badge{font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(244,63,94,0.09);color:var(--danger);border:1px solid rgba(244,63,94,0.2);padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:4px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--danger);animation:pdot 1.5s ease-in-out infinite}
+.track-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.tb{padding:11px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;font-size:0.82rem;transition:all 0.3s;display:flex;align-items:center;justify-content:center;gap:6px}
+.tb-p{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000}
+.tb-p:hover{box-shadow:var(--glow);transform:translateY(-2px)}
+.tb-s{background:var(--surface2);border:1px solid var(--border2);color:var(--text)}
+.tb-s:hover{border-color:var(--accent);color:var(--accent)}
+.stop-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;position:absolute;left:-26px;top:3px}
+.stop-dot.done{background:var(--accent3)}.stop-dot.current{background:var(--accent);animation:pdot 1.5s ease-in-out infinite}.stop-dot.upcoming{background:transparent;border:2px solid var(--muted)}
+.stop-line{position:absolute;left:-20px;top:16px;width:2px;height:calc(100% - 12px);background:var(--border2)}
+.stop-line.done{background:var(--accent3)}.stop-line.partial{background:linear-gradient(to bottom,var(--accent3),var(--border2))}
+.progress-stop{position:relative;padding-bottom:20px;padding-left:0}
+.progress-stop:last-child{padding-bottom:0}
+.stop-name{font-size:0.85rem;font-weight:600}.stop-time{font-size:0.72rem;color:var(--text2);margin-top:2px}.stop-note{font-size:0.68rem;color:var(--accent);margin-top:2px}
+.progress-track{padding-left:26px}
+
+/* ===== ADMIN ===== */
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:28px}
+.admin-kpi{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:22px;position:relative;overflow:hidden;transition:all 0.3s}
+.admin-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;opacity:0.8}
+.kpi-blue::before{background:linear-gradient(90deg,var(--accent),#0099cc)}
+.kpi-purple::before{background:linear-gradient(90deg,var(--accent2),#9333ea)}
+.kpi-green::before{background:linear-gradient(90deg,var(--accent3),#059669)}
+.kpi-red::before{background:linear-gradient(90deg,var(--danger),#e11d48)}
+.kpi-yellow::before{background:linear-gradient(90deg,var(--warn),#d97706)}
+.admin-kpi:hover{transform:translateY(-3px);box-shadow:var(--glow)}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.kpi-label{font-size:0.75rem;color:var(--text2);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.kpi-icon{font-size:1.3rem}
+.kpi-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1;margin-bottom:5px}
+.kpi-change{font-size:0.74rem;display:flex;align-items:center;gap:4px}
+.kpi-change.up{color:var(--accent3)}.kpi-change.down{color:var(--danger)}
+.admin-bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:20px}
+.chart-area{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:24px}
+.chart-area h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.chart-period{display:flex;gap:4px}
+.cp-btn{background:none;border:none;color:var(--text2);font-size:0.72rem;padding:4px 10px;border-radius:7px;cursor:pointer;transition:all 0.2s;font-family:'DM Sans',sans-serif}
+.cp-btn.on{background:var(--surface2);color:var(--accent)}
+.bar-chart{display:flex;align-items:flex-end;gap:8px;height:160px;padding-bottom:6px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.bar{width:100%;border-radius:5px 5px 0 0;transition:all 0.8s ease;position:relative;cursor:pointer;min-height:4px}
+.bar:hover{filter:brightness(1.2)}
+.bar-tip{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:var(--surface3);color:var(--text);font-size:0.65rem;font-weight:600;padding:3px 7px;border-radius:5px;white-space:nowrap;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.bar:hover .bar-tip{opacity:1}
+.bar-lbl{font-size:0.65rem;color:var(--muted)}
+.recent-table{width:100%;border-collapse:collapse;margin-top:4px}
+.recent-table th{text-align:left;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:0 0 12px;border-bottom:1px solid var(--border2)}
+.recent-table td{padding:11px 0;border-bottom:1px solid var(--border2);font-size:0.82rem;vertical-align:middle}
+.recent-table tr:last-child td{border:none}
+.td-route{font-weight:600}
+.td-status{font-size:0.68rem;font-weight:700;padding:3px 9px;border-radius:20px}
+.ts-ok{background:rgba(16,185,129,0.1);color:var(--accent3);border:1px solid rgba(16,185,129,0.2)}
+.ts-del{background:rgba(245,158,11,0.1);color:var(--warn);border:1px solid rgba(245,158,11,0.2)}
+.ts-can{background:rgba(244,63,94,0.1);color:var(--danger);border:1px solid rgba(244,63,94,0.2)}
+.admin-map-mini{height:200px;border-radius:var(--radius-sm);overflow:hidden;margin-top:14px;border:1px solid var(--border2)}
+.admin-right{display:flex;flex-direction:column;gap:16px}
+
+@media(max-width:900px){
+  header{padding:0 16px}
+  nav button span{display:none}
+  section{padding:28px 16px}
+  .booking-layout,.pay-layout,.weather-layout,.reviews-layout,.track-layout,.admin-bottom{grid-template-columns:1fr}
+  .hero h1{font-size:2rem}
+}
+</style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<!-- ===== LOGIN OVERLAY ===== -->
+<div id="loginOverlay">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAH0AfQDASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAQCAwUGBwEICf/EAFUQAAIBAwEEBQgDCwYMBQUAAAABAgMEEQUGEiExBxNBUWEUInGBkaGx0TJSwQgWI0JFVXKSk+HwFTM0RGLSFyQ1NlNUgoOEorPxJmR0o8JDY3OUsv/EABsBAQACAwEBAAAAAAAAAAAAAAACAwEEBgUH/8QAPhEAAgEDAgIFCgYBAgYDAAAAAAECAwQRBSESMQYTQVHRFCJTYXGBkaGxwRUyQlKS8EMj4RYkMzVysjRi8f/aAAwDAQACEQMRAD8A+MgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADNaDoc71qtcb1Oh3cnL0F1ChUrzUKayyFSpGnHik8IxlnaXN5V6u2oyqS7l2Gx6dshUnHfvrjq/7EFl+tmyWNKja0VSoU1TguSRJjJPidbZdHqUVmu8vu5I8K41Wo9qSx9SFabN6NQgou161tLLqSy38idR0bR4/ky0fppp/EuQfEvweD3qdhawWFTXwR41W6ryeXN/FltaPpH5rsv2EfkVx0bRn+SrJ/7mPyL8XwLsZcS9WVt6OPwRqyua/738WR46Jor56TZfsY/IrWhaG/yRZfsYkqD5F2L48CasbX0cfgimV3cL/I/iyFHQNCf5Isv2KLsdndB7dIsn/ukTIPh4l6LLVYWnoo/BFEry59I/iyDHZvZ989Gsv2SLkdmNnXz0az/ZonxZegy1adZ+ij8EUSvrr0kvizHx2V2bz/AJFs3/uy5HZTZl89Fs/1DIxlwLsHktWm2foo/wAV4FEr+79LL4sxi2R2Y/Mlm/8AYK47H7Lv8h2n6plovwLsGWrTbL0Mf4rwKJajeell/J+JiY7GbKP8hWn6rKlsVsp+YrR+p/MzUZeBcjImtLsX/hj/ABXgUvUr30sv5PxMF95GyT/INp7/AJhbD7Iv8g2vtl8zPlSD0mx9DH+K8CP4pe+ml/J+Jrv3jbJfmG1/Wl8z17DbI4/yFa/rS+ZsIyY/CbH0Mf4rwMfil96aX8n4mt/eLsj+Y7b9aXzPfvD2R/MlD9aXzNiQyPwix9DH+K8DP4rfeml/J+Jrf3g7I5/yNR/Wl8zlfSv97dpqNPSdBsKNKpb/ANJqwbfnfU59nb6jpPSftbHZzSeotpReoXMXGks8YR7Zv7DgE5SnNznJylJ5bb4tnBdKrizpS8ltqcU1zaSyvV4nd9F7e8qx8quKkmnyTb+PgeAA4s7IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEvSrN3lyocoR4yfh3E6dOVSSjFZbMSkorLJ2z2mK4mrm4WaUZcI4+l6fA2+niKSikklhJEOhGNKnCnHO7FJL0IkQfYd7p1lGzp4/U+bOeu67rS35dhKjIuwlywRoSLsJdx6cWefKJKgy/CXIiQkXYS4l0ZGvKJLhLxLsXxIsJ8OBcjLDLYs1ZRJcJF6DIsJF6MiyMjXlEkplyLwWKci5Bl0Wa0o4JEWXIPBYi+JcT7i6LNeUSTCWS9B8kRYNF6EuBdGRryiSYyLsJEVMvRZbGRRKJJgy7GRGjIuRkWxkUSiSYvgVriWIvkXYssTyUSiV5ABkgM5ZA2h1e10PSK+pXksU6S4LtlLkor0skXt1b2VrUurqtCjRpxcpzm0kl6zgfSLtfX2n1BRpb1LT6Dao02+Mn9aXj8DnekGtw02jwxf+pJbL7s6HQtFnqNZOSxTXN/ZGE2i1i813Vq2o3s96pUfCOeEI9kV4IxwB8gnOU5OUnls+tQhGEVGKwkAARJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFdGnOrUVOnFyk+SRtGmUFaW6pcHJvMn4mvWV1C2Un1O9N/jb2MLuJsdaaWHbJ/wC3+49rSq9rb5qVX53sexqXMKlRcMeRsUJ8i9CXI1qOuyX9W/8Ac/cVx2ha/qi/afuPdWtWn7vk/A8+VjVfYbRGXiXISNXW0uP6l/7v7itbUY/qPp/C/uLI63Z/u+TKZafWfZ80bXCXiXYSZqK2qS/qL/a/uLkdrUv6i/2v7ixa5Zfv+T8CmWm3D/T80bhCRdhLvNNjthFfk9/tf3FUds4r8nv9t+4tWu2P7/k/Aolpdy/0fNeJu0JcS/CXE0antpvTUYaZKUm8JKrzfsNt0utc16HWXVsraXNQ39/h48OZuWmp291LhpSz37PwNK5sK1CPFUWM+tGSpsvxfBEWDL0ZYPUjI8qcSQnguJliDyyi6vbWzhv3VxSox75zS+0nOtCmuKbwiqNKVR8MVlk6Mi7CXianc7bbPUG0rqdaS5qnTlx9fIirpF0WMmpW99LHJwhHHvkjRqa7YUtpVV7t/pk2Y6LeVOVN+/b6m9xkXYSRoS6SdCX9V1L9nD++VrpM0Jf1TUv2cP75iPSbTV/k+T8DD6PX7/R814nQIyLsJeBz2PSfoS/qmp/s4f3ytdKOgJf0PU/2cP75Yuk+m+k+T8Cl9HNQf+P5rxOhxfiXoSXcc2XSpoiqY8g1Fxxz3YZ9m99pFvOlulFtWWjTmuyVWso+5J/Em+lOmRX/AFPk/Ar/AOGdRk/+n814nWIvKyzBbUbWaNs9SbvrlSr4zG3p8Zy9XZ68HHdc6RdpNTjKnTuY2VF840Fhv0yfH2YNSq1J1akqlWcpzk8uUnlv1ng6h01WHC0h739l4/A9qw6G4aldS9y8fD4mxbabYaltLcYrSdCzi/wdvBvC7m+9mtgHB169S4qOpVlmT7WdxRoU6EFTprCXYAAVFoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9sdpXl995RWj+AoNNp/jS7vtLrehO4qxpQ5srq1Y0oOcuSM9sboMLWjC/uo5uJrMItfQT+02qLw8lpNLsKkz6XY2dOzpKnD/9fecRd3E7mfHIkQkRdX1iw0qiql3WUW+MYLjKXoRgtqNpYab/AItabtS6ay88YwXj4mkUaWo61qEadKNa7uajwkuL4v3I8nU+kCoy6m3WZcs9if3Zu2WjuousrvEef97jP6ztvqNzvUrBeSUm+Elxm16eSNep0tR1S6/B0rm8ryePNi5yZ0/ZfoxtaKp3Gu1/KJtZdvTyoxfi+bOhWFnY2FvC3sbSjb04LCVOCj/3KLfo3qGo/wCpdz4V6938OS/uwuekVjYf6dtDifq2Xx7TiWn9HO1N2lKVpStU/wDT1UvcssytLok11/zuoafH9GU5f/FHX1LxK1LxPdpdDbCKxNyb9q8DwqvS6+b81RS9jORf4ItX7NUsvZI8fRFrXZqVh/zfI7FGRWnwLv8Ag7Tn3/EofS7UV3fA4w+iLXF+UNP9svkef4I9e7L/AE79aX907RUnCnBznJRjFZbk8JGnbS9I+gaRN0aM5ahcJ4cKDW6vBy5ezJpXnR3RrOPFXm4+/wCi7TbtOkGs3cuGjBS9xo/+CPX/APX9O/Wn/dKavRPrlKG/U1HTIx73OSX/APJZ1vpS2hvZyjZdTY0XwShHen65P5Gn3+qalf1JVL2/ubiUufWVXL4nKXdXR4bUISl628L6NnU2tPWJ715xj6ksv6pGXv8AZqysZuNxtTo0mnh9RKdXH6sWa/XjCFWUKdRVYp8JpNZ9TKAeHOUZPzVg9uEZRXnPJctqFa5rwoW9KdWrN4jCEW234JHQNG6INqb+hCtcSs7FS47labc0vFRTS9p0Toi2QtNB0elqFelGpqd1BTnOUeNKLSahHtXizN7Tbb6BsxWVLUrpus1lUaS3pr0pcvWy2NFJZmcRqPSe6qXLttNhxNduM59nq9bOT6p0LbV2tvOva1rC9UVnq6dVxm/QpJL3nO760urG6qWl5b1LevTe7OnUi4yi/FM+oNkOkHZzaa58ls7t0blrzaNdbkpejjh+oo6VdiNP2o0KrVhTUNXt6blbVYrjNrjuS70/czEqSazFlFj0su7e5VtqlPhzyeMY9vevWj5bBVUhKnUlTnFxlFtST7GikoPoIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXF4Om7PWK07S6VHC32t6fHPF8/4/wC5o2y9orvWaMJPEYfhHjw/fg6LFvkzqujVtvKu+zZfc8LWa20aS9rLifaYPazXHp1ura3/AKTVXB/UXf8AIyGq31PT7Grc1MPdXmx733HPLeje63rEaVKMqtzc1OCXZn7Eb2t6lKklQpfml3dn+7NXTbKNR9dU/Kv78C9s7ot/tBqatLSLlJ+dUqS5QXbJnctldn9P2eslQs6adVpdbWa86pz59y8CjZHQbbZ/SYWlFqVR+dWqY+nLhn9xmPQe3oHR+FlBVqyzUfy/372c5rmuTvJujSeKa+f97EV5PclCGTqMnNYK97jxPVLBabzwKZ1Y0oOpUkowisuT5JLxMOSissKDk8IlRnxNX2u2/wBJ0FSt6T8tvVldVTl5sH/afZ6DStvOkGdz1mnaFUlTo8qlyniU/CPcvE55CM6s3ji+bbZw2sdLmm6Nl/Lw8TtNJ6KqSVW8/j4+Bm9ptrdb1+pLy27lGhnMaFN7sF6u31mBJEIUadWUK7fDlgV61JuUaVNKPJNrDOEq1J1pOdWWX692dtSpQoxUKccJdxHBKheThS6uMcLCyk+D9K7Smh5K6bVVyjPjxXZ3MqwWEcyeylGnc7UaVb1f5upeUYS9DmkzH9VUdJ1VF7ifMrsq87W8o3VP6dGpGpH0p5BGpFyg0ueD6uuqzp2lWvSXGnTlNL0LJ8p6ld3F9f17u6qyq16s3Kc5PLbPp7QtSt9T0a1v7aSlC4pKWOeG+a9uTkm2PRbq1G+qXWhwjdWlSTl1bkozpv6vF8V4m1Xi5JNHzzopc0LGvVo3D4ZPv25ZysnOLatVt7incUZuFWnJThJPDTTymfX+zV27/QNOvq6xUuLWnVnF81KUE2vecE2P6KtbvNQo1dbpqxsoyUpLeUpz4/RST4Z72d5vLu10jSql3Vcadra0nKTzwjGK5EaMGstlPTS9tr2VKhQalNPmt8Zxt7z5e6SKNK3281qlRiowV5NpLxeX8TXydtBqE9V1y+1KfB3NedXHcm20vYQTXfM+jW8JQowjLmks/AAAwXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG27A2+IXF3uvOVTT97X8eBta87lzMTsnR6jQqC3UnUTm8Z45/d2omapcxs9PrXO8o7kW4+nsXifQdOirWxi5bbZf1OUvG69y0u/C+hqG2moO5v1aRbVO34Pxkzeeh/QPJbOet3NPFWut2hnsh2v1nONBsZ6vrttZtvNeqlNpccc2/YfQNvThQoQoUlu06cVGK7kv3Gl0btXf3k72qsqL29vZ8F9iPSG68ktY2tPnLn7P92Xs+J7kt54hM+i5OBwXM9x42UNsZx2mMhRKnJJNtpJcW2cg6RtsqmqV56ZptVwsKbanOLw6z8fD4mb6WNppW1NaJZVXGrUjm4nF8o/Vyu/4HLD550n1yVSTtKL2X5n3vu9ned50d0ZU4q6rLd8l3ev29wPYtxeU8M8BxR14fF5YAAAAALtKvOnHd+lDuZ7XozhGNR7uJrKUewsl+lWqul5OlFp8s9n8faSTzszDOgdC206sdUWh3tRq2uZZotvhCp3eh/HB2yNTffmvgj5Pe/RrebJqcJcJReOK7Ud/6Mdplr+hx61ryy38yus8Zd0sePb6zZoVP0M4PpZpGf+cpL/y8Teac8pLPE49067X1Ktf72LKs1SpNSu3F85dkPQub8cG7bf7TUdmtn6lynvXdXMLeHfLv9C5s+c7itVuK869acp1KknKUpPLbfaYuJ481Gv0S0ZTn5bVWy/L7e/3fUtgu2e55XR6yKnDfjvRfas8jO9ImzVbZTaq60qam6Ce/bzkvp03xT9K5PxTNXB9AdaEaipN7tNr3Yz9Ua6AAWgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAArowdSrCnFNuUlFY8Sgymy1JVdboZ/EzPlnkWUabq1IwXa8EKk1CLk+w36hCFKhTpQioxhFRSTbxhcss1rby7xCjYwk+P4Sf2GzbySbfBI51rly7zVq9XHDecY+hHYa9cKjbRox/V9EeBplF1KzqPs+punQ3prleXWq1IebTj1dOXi+ePV8Tp+9jkYTZDT46Vs7aWm7u1Or3qnjJ8X8fcZdPgdRoVn5HZQg+b3fv8ORyWs3PlV5KS5LZe7+5Lqke7xZ3j3ePY4jyOEu73Ex20mq0tH0e4v6nHq4+Yl2yfJEze4nMOmHVXVvqGk05PcorrKnc5PkvUvieRrd/5FaSqR/NyXtf9yepo9j5XdRg/yrd+xf3Bo17c1ry7q3VxNzq1ZOUpPtZZAPkTed2fUksbIAAAAAAAAAHsW001zXE8ABInv3Ut6MEnFccdplNjNdudmtfpXsFLq/oV6f1oPn6+0wsJShJSi8NciVaLr6tSrPDaXJ8efpLIZlJb7lVWnGpBwmsxaxgym3m0dXaXXZ3ji4W8FuUKbfKPe/Fmvkm/UFOO6knjjhYIxionGTTFClClTjCCwlyPU2mmnhrkd46ZrSG1/Rlo22trScrm3ox69pc4Swpeya97ODH0Z0BThrvRVqGg3PnU4VKtu88d2NSOVj1yZmms+ac70lqO0jRv4/45LP8A4y2a+h85glatY1tN1S60+4WKttVlSn6YvBFKzpotSWUAADIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANm2Fpfhbmv2pKPtefZw9xrJu+yFF0tIjLGOsm5ens+w9XRaPWXcc8luaWoT4KD9ZI2kvHZ6TUnGSjUn+Dh35fb8TXNh9Nep7R21KS/BU5dZUfgv3l3ba7VW8p2sOVKOZce19nqNq6KtPjQ02tqM8qdxPdj+jH9+T03H8R1WNP9Mfoufz2PPnU8i09z7Xy9/LxN73lwweqXEsKeWVKfcfRVI4BxL6ke7xZUuA3lklxEOErq1Y0qM603uxhFyk+5JZZwTWr2eo6tc3tR5dWo5L0dnuOq9I2pqy2aq0l/OXP4KPofN+w4/BZmk+8+f9LbzrK0LdPaO79r/vzO36MWvV0ZVn+r6Ik0LXMd6tvRTWYpc3+4uO1pJcXJ+jgXqlSO65zkljl+5Fryilyc2vUc+qdGCxJ7nRcUnyCtrd4e+kvGpHJU7e1VNpOm39brVn4lKqWCj51GMpd7cl8GeQlYqeZUotfV3pY+JVmPciXxPY21DPnTjjwqxz8T2VrQz5m80+1sTqac15tvFP8ASl8y7bZuJKnSVSrPCSUYuT4LC7Mk6fVvaeDDz2EWpaR3G6cm5Lsa4MiGar2tzbPduLerRm+KVSm4t+1GNv47tdcGnKKbK69OCSlDkSi3yZHABrEwexk4vMW0+9M8ABdoVtyrvzW/wxx7Dy4dJ1G6WcPi8rGGWyTCVJ2M4zkusT8xcfDj8SS3WDBGO4fcr3jVbXNPzwlGlWS9G9F/FHDzrn3MVSUNptTgnhStY5/WM03iSPB6U0lV0mvF92fg0zC/dB6fCx6SrurTjiN3ShX5c21h+9M56dr+6ls4wvdEvsedOlUpN+CaaXvZxQVFiTLOjdx5RpdCf/1x8NvsAAQPbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPUsvB0SgoWenxcsQjTp+cuxf9jRtGpdfqlvTxnM8vh2LibJtXeSo6d1EJbsqz3X347T39ImrehVuH2bL+/A82+j1tSFI1irKrf6i3FOVSvU81el8Ds2l29Oy06haU+VKCjx5vHNs5p0fWXlOueUSS3LaO/x7+SOlqeT2Oi1u1GdzLm9vH5/Q8bpBWy40I9m5LUipSIynwKlPxOvUjmHAkKR7vPsZYUyivcQoW9SvN4jTg5PLXZ6eAnVUIuTIxpuUuFHPukm/8v2goaYpvq6DUZ4+tLGfWka9UtqG5UaxCVPDj/a85LHvz6mWKt5K51Z31bg51usl4cckx1KKp3EHOMpTSjHDT470X8Ez5TXuPKqtSrLm3sfSreh5PShTXYiFqUd2pTw150M+9r7CKSL6W9UisfRjj08W/tI5pVfzs2Y8gX7Czur+9o2Vlb1Li5rTUKdKnHelOT5JIt0KVWvWhQo05VKtSSjCEVlybeEku8+3vuauhKnsVpdPaDX6EKu0N3TTjGSyrODWd1f2+99nL0wMnPeij7nClSpUtT26fW1pJShp1OWIw/TkvpPwXvO66Hsro+iWyttI0q0safdRpRi33ZfNm8qyTXGIdku7kAfPP3VmlW76Nad5OjF1re/pdXPHGO9vRaz6z5KmlWuW5wTxFJJ+s+2fuv7eNLodnLH5Qtly/tM+KK1RRuGm4x3YY5/2n8zYoYe0uWSEvUQbuMYV5KCxHCwvUWS7dyU68pRaa4cvQUQjKclGKy2UyS4ngkuRSC/UowpdW5zy3Lz4rDwuHiVTq0PJ3TjT87PBuK4cV2+7iYccczJZjTnKDmovdXaXK1aMqNOlGP0Vz8e08ncVZw3HLhhL2LBZM5xyAOu/cxU5PaPVamPNjaxWfFy+SZyI7r9zJbbmk6xetL8JXp00/wBFN/8AyJUlmaOd6WVeq0ms+9JfFov/AHUMc6Fo82llXM0n/sr5HAzvX3TtWL0HR6eeLuZy/wCVHBTNb85R0Mz+D0s+v6sAAqOpAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM3shTUr+dZr+bjwfiy3tXcxuNUcIZ3aUVHnz7ck3QYq00S4vU03JPn4ZwjB2VGd7f06OW5VZrefpfFnq1XKFpToR5yeX9EacEpV5VH2beJv2wVqrTReued+vLffguS/jxNiUyFbQjRpQpQWIxikly5F9SxyO9saKtqEaS7Ecfdz66rKb7WSVPBWqhGUuB6pG6pGo4EpT8TW+kXUPJtD8ljLdncy3eH1Vxfq+ZnN72HOdv713Otuin5lCKivS+L+w8bX7vqbOST3lt4/I9HR7XrLlNrZb/AN95rpctlmvBPtZbL1njyqllZ85Hzpcztj28W7VxnsLBPvqTqzThjKWPTxfzKbKFe1vKNwqdKbpTU1GbTi8PPFF1WjNSexCMk0fUv3GnQpXqXFHpE2ns3GlDztJt6keMn/pmu5fi+3uPrx2u8uR8ZaV91rtxZWFG2ls1s9VVKChFqc4YSWFwTwa3tf8AdOdLOtqULG+0/RKL/FsqKcv1p5ZVwS7iWV3n3g7XHYUOjSTxvxz3ZPzL1TpC6RtUk5X22Or1s8/8bkl7uBg6mrbRTqqtLWb2dTnveUyyveZ6uXcxlH2392jd6fR6M7TSa1xTVzeapQUKSkt5wi3l49ntPhTU8eU8OWPtZNub3Vby5hcX17Xr1INOMqlRzlwfDmQL5t1llY4FjhKNN5RHKzsRyTWoqjbU5tuNSfFLw7/h7SMXoUa9Wl1iTlCL3ct/AqjvtgmWQX/Ja2M4j+sgrWs2kopt8lvIy6c+4xlFgHsk4ycZJprmmeEDIPpzoS0x6Z0e2O+sVbpyuZ5/tPzf+XHvPnPZ3TKus65Z6XRzv3NVQzjku1+pZZ9b21OnbUKVGjFRp0oKEY9ySwjYt47tnA9PLzht6dsucnl+xf7v5HG/umLuMr3SLFPMo051ZLuTaS+DOOG89OWox1DpCu4wkpQtYQoLHJNLL97ZoxVUeZNnTdH7fybTaNN92fjv9wACB7AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAL1nTda7pUlx3pJGUsvCHIy2q1fJtFtrFLEpxUpp93P1cSRsNaqd3UvJLPVLdj3ZfaYvX6/XanUSeVT8xcO7n78m2bN0fJdJpQeN6fny4d/8ACPfsKaub9P8ATD7bL57nmXcuqtmu2X3M3GfDBcjIiQZcUjtVI5qUCWp4Kt7xIql4lW8TUipwLl1cxtrarcVGlGnFyeX4HJrirKtcVK0m25ycnnxZu23V46Wlwt4SalWlh8fxVz+w0U4jpFddbcKmuUfqzpdGt+rpOb7fogXbX+k0/wBJfEtF21/pNP8ASXxOfjzR7BNq1Y0KsY1FJqSzJpZxx7u329oo1I1m8Pj3Pme1XvS86Dmk+SWSrMZbsY0IwVPOHuJPj3tc/Xk9NOaqYT2KNscjxt5CPFFvillDjk2PWVnrfDgeSkoR35PEfj4Hqi3yTPcKVOUHCMsrtSzzXsIVG1HKJR5lmN1CVWMYQk8rjnhhlnUGnX4csIlRxFun1Thw54X7yJfpKsknySyalVydLMnncsjji2RRQpKrnz1Frku8lzhcKNKNvUS3Yriqii03ld/p9pYsYpycu1cF60/kSaTqJtVFDlwa+RXRpqUd+3tJSbRZlRvqKjHrMJ8lCuml7HwPZ297GO9KpGSTzhV4y48OxP0F7jxyG2k8NLnzz3F3kkVvlkFUb7C1WpRr1FNyjSWOOf49RBMjuTlRqOru/ReEscCjQtMudY1Whp1pByqVZpZxlRXbJ+CNatDDWFzJcajFyk9kdL6ANA3ruttHcQ82nmjb5+s150vY8etnXtZ1OjpejXmo15Yhb0ZVPS8PCIWgadb6To9rptol1dCmoZxjefbJ+l8TnvT5ryo6bb6BRk+suH1tbD5RT4L1vj6i7HVUz5VV4te1dftz8Ir+/FnHb65q3l5Wu68t6rWm5zfi3llkA0j6wkksIAAGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAStOl1VWdfh+Dg2s9rfDHvIp6pNRcc8G8slCXDLJhrKwStKoq51KjSqZlGUsy8ccTeotL6K4I1jZahuupcyT4rdh3eJsEZducHX6DQ6ug6j5y+iPG1GXHNR7iZGfDxK1JZIamXIzPeUjy5QJilwKlLsIsZ9pbvbqFtaVK8+UIt80sv1mJ1VTg5t7IhGk5yUUaltdd+U6xOMZ70KS3Fjlnt95hyqcnOcpy5yeWe06c6jxCLZ82rVZVqkpvm2ddTgqcFFdhQVU4SnJRgstkulaQilKq3J/VXD3l+O7GOIRUV6OZbTtZy3ewdRIptozhTbqc3yeclUpTUX1a87s4nnHtBvxp8MOFMpcsvJYnC7bzKMfZEocLiNSKcY70uWUsErmeudrDCrKr1uMwxHh7cr4GnUt4wWXIsjNvsI+5dr8SH6sSTSlVcM14rezlNY4+pFLb5jJfTt1B5TISnlYwVS8/eSw3uvGX24MbVhUi8zUuLxlmQyVQluvOM9vHD+IrUOsec4EJ8JCsZqNbDaw12vhn+Ml+4rqEo4W9k8q21KSbjmMs+oj1repT4tb0XyaNV9bRjwlvmyeS55X/Y94d3n8T3kU9jGUpKMU5SbwklxZX5RU7zPBEyVVpU5un56ksLsbzy4HX+inZX+QtO/lC8gvL7qKbTXGlD6vpfMwfRvsSraENW1ml+HeJUKEvxPFrv8ABnSoS3VzNmCc8TmcN0i1dTi7Sg8rtf2Lmqanb6TpdxqN1Pdo0Ib0u9+C8cs+a9o9Wudc1q51S7lmpXnnGeEVySXgkbb0s7Vy1S/lpFlVzZW8vwji+FWa+xGhGvWqcTwuSPV6NaQ7Ki6tRefL5Lu8QACg6YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFUIynNQistvCKTIaRSW95RPseI+L7fii63ouvVjTXaRlLhWTN2kY0KMKUeCivS+8lQnhkCNTuL0anA76nFQioR5I8apHieWTVPxK4z7MkKM/EuQqZZapGvKBOU+9mu7Vakq27ZUZZjF5qNdr7i7q2qqhTdGhJSqvm1+Kvma7BxdROplxz52Hxwc1rGpqS6im/a/sb9lacL6yXuLlKnPCq9XvwXNE2lVVWK3MRjF8I55d/A9oyW4pU2sLu7C1VoQmsxxGfeuCPJjSlTxKG5vuSezLjfF94XAs79an51enKUW/pJ+JdVWnJpU5ZeMteribEK8ZbPZlbg+w95g9xjsPMF5E8bKatspvfdSWexJcv4eSvzU8t47c9i9JEleXO89yvVhHsipvgu407mcVhSWS2mmS3n+Ow8yU0p9ZRjJtuXHebeclfabMJcUU0VtYZ5yPe4eg8k4xWZyUUSbS5mAVJ7rU20kuOX2Frrk5qFKEqs3wSiu0z+jbHanqTjWvpeSUO7nJrwXYa8q6bxBZZipUhRjx1JJIwNK3lqNeNpY2kq1zOfBxfZ3d3rZ0zYvYm30rcvdSUK99zjHnCk/Zxfj2GT0LSbDR6EaVnRUX+NN/Sl3tszHWKMHUqTSjFZbbwkQhQSfFLmcrqmtVKy6qhtH5smRk+GXxOf9Je2boQqaNpVb8NLzbitF/RXbFNdveQ9uNuvMnp2i1s5yqtxHu7ov7TnMm5Ntttvi2+0pr1k/NiXaLoLjJXFwvYvu/A8ABqHYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHsIuc1GPNvCMzThGlTjCC5L2vvMRRqTpVN+DxJJrPp4Fzyqv8AXPT026pWsnOabZVUg5bIy0ZPJchN5wzC+V1/r+49neXM8ZqtY5bqS+B6stdpY82L+RT5M3zM3OvTpxcp1Ixws8Ws+ox95qtSWadviMeKcsZb9GeRjpylOcpzk5Sk8tt5bZSeZc6vWrLhj5q9XP4lkLeEXl7gAHlF5XTqThwjJ4547CbRr05xS5Sxy7DHgupV5U+RGUVIzEZPCXrPFYUKi45g32pkCldVYSzJ7/pJ9K9oyX0t15xiXD1m4qtKttLmUSjOP5S0rK6pbyo1Iy4dq+BTBXdLM61rUnBcZNLGPS8PBlqXDDfak14r+O0k025JRfFdhnybG8JFLuXH8yNbq1m6b36M4uS4PsIhurUJ8JQi33tcSqNrbNreoU/1UVztZyeXIj5fGP6TT7etuLd3HLL7GSYzr1Mxp2VVzXFYTftWDcqVO2jFKNvSWP7KJNL6SeEscsE1RqJJcXyKZ6lFb8HzNRtNH1u6k1C3VGLXHrMJcfSZew2Nh1qlfXbnH6sFj2s2GNSWVkvRnji3gyrePOTyefW1SvJYjsVaPpenaZwtLeMX9eXGT9ftMrGbSyuKNevdf0uyjLr7lSqL8Snxln1cjWtS21vailTsIKhBrG/LjLl7DMqtOksI0Y6fdXkuJ59rN91XW9N0y2dW7uIxnjzaa4yk+zgc62m2tv8AWIO2hm3tO2CfGXpf2GvV6tWvVlVrVJVJyeXKTy2UGlVuJT25I9+x0ijatTfnS7/AAAoPWAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK4VKkPoTlH0MmR1a8Ty3CT/Rx8CACUZyjyZGUIy5ozcdexCKdr5yXnS3+fo4cC/T2ho8p280vBpmugtVzV7yl2tJ9hsv3x0Yy823qSXi8Hq2qUZLFkpR7c1MP4GsgO5qPtIeRUP2mcq7T6jJvq1Spp8sRy19nuMfdapqFy/w13VksYwpYXsRDBXKpOXNlsLelD8sUAAQLgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXI0akoqSg2mWya7iknGMX5qXBt/uLKcYyfnPBhtrkR+oq/UY6it9RkyFWnPgpJvwyeVanVpSksp8OfE2PJ6eOLi2K+OWcYIjt6y5wZbnGUXiSwycrmnu8ZJv1/IiV6jq1ZTbfHgsvLwuS9hTVjCOOF5JxbfMqdtXXOm0edRV+oyde31KveVakcqE5uS3vF/Et+UUvrr3/ImqdH9xjMu4idRV+ozydKpBZlBpd5Ldenn6a9/wAi5GUJ8aclJ9vh7USVGnLaMtzHFJc0Y0Ei7pKCjNP6TaaxyI5rTi4PDJp5WQVU6c6jxCLk/ApMjTpdTDdWHL8Zp59neTpUnUeDEpcKIc6FWGcw5c8cS0ZKEoy4qSbXB+BDu4RjNOC81/EnVoKEeKLyjEZ5eGWQC5bpOvBNZWShLLwTPeoq4TcGs95RUpzpvE4tGS4vOeOOL+LLVeMakMN8VyZtztUl5r3K1PvIAPZJxbTWGgllpGmWFfUVfqNlsycMNLj2LiY7Dc8Pm2X1qKp4w+ZCEuIQhKbxGLl6EXJW1eLw4expkyMVSit1JJJZx2+JQ69LPCon7fkT6iMV57wY42+SIvUVvqMeT1vqMlOvT7Jr3/IeUUubkn4cfkOro/uHFLuIMouMnFrDXMrhQqzgpxhlPxKG8vJkLZ4tqfofxKqUFOfCyUnhZIE4Sg8SWGTtJ0TVtWhOem2Fa6jTeJums4ZHvv51fonRdgNttntnNnIWNSjdO5nN1K0o01hyfDnnjwSNywtbetc9XcVOCO+5pX9xXo0OOhDjl3GorYzan8yXf6qH3mbUfmW69i+Z1fSOkfQtS1Ghp9CleKrXmoRcoJLL9Zsev6rbaNpFfU7tVJUaO7vKCy+MlFcMrtaOrodGtMr0pVadw3GPN7bdvd3HL1ukOpUasaVSglKXJb7/ADOC/eZtT+ZLv9VGO1fSNT0mVOOpWdS2lUTcFPtwdej0qbPJ8aF81/8Ajj8zm3SHtDDaPaB3lBVI20KcadGE0k0ub4LxbPD1Ox0y3o8VtWc5Z5fc9rTrzUa9XhuKKhHHP7EDSdnta1W3lcadp1e5pRluuUFwz3ExbF7Uv8i3XsXzNx2H270DZ/Zq202VK7lWTlOs401hyb9PoRmv8Kmzv+gv/wBmv7xs2mmaTOhGVa5xJrdd3q5FF1qOqQrSjRt8xT2fecz+8zan8yXXsXzLF7sxtDZw6y40e8jDm5Kk5JenHI6m+lTZ5/8A0b79mvmZfZjbfQ9fvVZ21WrSuWm4U6sd3fx3cccjahoekVpKnSuvOfL2/I1ZazqtKLnVtvNXPmfP0k4ycZJprg0+w8Ot9NGy9nCwe0NnTjSqwnGNxGCwppvClw7c9vackOb1LT6mn3DoVOa7e9HQadf07+gq1Pt+TBIsLG81CuqFja1rmq/xacHJ+4sRjKUlGKcpN4SXNs+gujjZ+noWztGEqe7eV4qpXk1xUnxx6EjZ0XSJ6pXdNPEUstmvq+qw02iqjWW3hI4rqey+0Gm0OvvNKuadLGXNR3lH045eswx9N6Hq+na1a15WVSNanSqyo1E0uLX2fE4d0nbPR0DaOUbem42dyutorHCPHjH1P3NG7rOgws6Mbm3nx03tnuNLSNcneVpW9xDgmt8d/wATVQAc0dGAAAAAAAAAAAAAAAAAAAAAAAAAAAX7JZqN9iRevv5iH6TLdk+Mo9rw/DtK73+Yj6Tcj/8AHZW/zkMAGmWEi3tKtbdk3GnTlynPOPdxJK0yH5xtPZU/uEi8hC3uq1KKxThNxiu5JkevcU7e4q0ZUpScJuLe/wA8cO43HRpQinJ8yvik3se/yXH84Wnjwqf3SmlS8nc4dZGplrjFPDxnv4ntOrGqt6HDjxi3l/vFeUqdJuKTfvXjjl4E406cV1i3ItyezLN88RjFtZzy7iIeybk8t5bPDTqT45ORalhYL9nRdSTnlJQw/S+wk1Kqoxcvxny9IoQlTpKMsLt5Ee9qRnUShnEVh8c5ZtY6mjntZX+aRTbTkq3PLm8PLJVWnvU5RfPml4mPJ9vNTpKTeZLmRtmpJ05GZ7bogFy2/n4ekru6ajNSjwUuOO5lFv8Az0PSUKLjPDJ5yibU3+rnuP8AFfsxx+0t2lTrE4zbc1y8UVV5SjRk1zax6mQDZrzcKqaK4LMcE24pdYnJLzl7+BDj9JekyFCsp0eGFNcGs+ksV6Tz1qxhfSI1oKa6yBmLxsyRTXmr0ECEnTqxmsNxknxWeRPTW4kvqmOfB4ZK7/SYp9pkcxnDK4xkWJWkeGKvq3ftLFKtUp4UZeanndfIr8pqb2Xj2Ii61Oa89bmVFrkXPI1jPW/8p5KzbeKU97h+Mt37SiV1Ua4P3IlUanWU95RccPHHt9fD+MGYxo1HwrYNySyzHtYeGT7f+jU/Q/iR7+OKybbblHPH2fYSLf8Ao9P0P4kaEeGtwiTzHJGvf51folgv3v8AOr0Fgpq/nZKPJGc2B/zz0r/1ETsXSr/mBqi8KX/Vgcc2D/zy0r/1MTsXSsv/AADqnopf9WB2nR//ALPd+x/+px+u/wDdbX2r/wBjgQAOHOyMvs7s3rGvzktMtHUhB4nUk1GMfW/sNkXRZtJ/ptO/bS/unRui+3p2+xOnxpQx1kHUm++TeW/sNf2k6TKmka9d6ZHR1WVtUdPfdxu72PDd4cTs6ehabb2VO4vakk59y9/c+w5Ges6hXvKlC0pxah38+7vRqs+i/ahSxFWU13qs0vekbFsH0e6jpO0NDU9Subfdt8yjCjJycm01xylw4mY2L6QLTaC9lY3FqrG5fGjHrN9VPBPCwzPbWXer2GjVbrSLSjc1qacpwqb2d3HOOO1dx6dlo2kdV5bRlKahvj1r1YT9Z515q2q9Z5HWjGDntn2+vLRgumjUKFrsfUsZVF117OEYQ7WoyUm/Rw95w0n65q1/rN/K81GvKrVfBcMKK7kuxEGMZSkoxTcm8JLtZx+tan+JXTrJYXJL1I6vR9O/DrVUc5fN+03Lok0JattHG6rRTtrLFSSf40vxV9vqOl9KGvR0PZirGlU3bu7TpUMPDX1pepP2su9HWhrQtmqNvVhGFxV/C13/AGn2N+CwjnO1Dv8Abvb56Xpe7OnQcqVKT4RUY5cpt+n7DppL8G0ZQW1Wr8Un4L5s5p1IapqjqTf+lR7ezbxfyRE6Jde/kjaaFtXqbtpetUqmeSlnzX7eHrOo9KuhLW9l6saVNO7tM1qLS4ywnmPrXwRznbXoz1jZbSlq3llC7o0911XSTTptvCfHnxOl9G+uLaDZqjc1pqVxR/BXC/tLHHHiiro1Wjc0ammXHKSzH+/Ne8jrNSnKdPVrKXEovDx9/o/cfO4Ns6U9AWh7UVXQg1aXWa1J9iy+MfU/c0amcfc287arKlPnF4O1t68LilGrDk1kAAoLgAAAAAAAAAAAAAAAAAAAAAAACTYJb8nnjjGC5fJqjDPDLZDTa5Noqq1qtXHW1Z1N1YW9JvCLlVxT4MEeHfJQACkkZ3U4ylf3PDh1kvizFak1LUbmSaadabTXpZRTuLinGUaderBS+kozaz6S0+Lyy2pV40ljkRUcFVKcqc1KPNGQpSVWG+lnsa7jGnqlJJpNpPxM0qrpv1CUcl66oum96MZKD7+xlVhBSrbzz5qysLt7C1Ur16lONOpWqThH6MZSbS9CKYTnDO5KUcrDw8ZRDijxZxsZw8GRuG4UZTmscMLPf7DGFc6tWpGMZ1JyjFYinJtL0FBKrVdR5MRjwoF60mo1UpPEXz4FkFcZOLyiTWTJ1KfWU5RaaWMp4zggW6xcQTzz7hCvWhCUIVqkYz+klJpS9JRl5zl57y2pV45KWCKjhYMhcQlOjPdi8JN5/j0GOLjrVnSVJ1ZumnlRcnhP0FsxVqdY8iMcLB7GTjJNc0ZBThVX4P1oxxVCcoPMZOL8GZpVnTYlHJPaxCT4JJPtMek5SSXNnspzlnelJ555ZSK1XrGthGPCZWlT6uKiqMJpdsqabZW1/wCXpfskYnfn9aXtPVUqJpqck1xTTJqtD9hjhfeZR8Fl29L9kvkWmowi5PEYrs7u74EOtd3VaKjWua1RJ5SnNvHtKK1WrWlvVak6ku+Um2ZVxGO8Yjg9Z7Xn1lRvjjksk21421PCy2nj2sxx6m1ybKqdVwnxsy45WC/fpxrJNNPBHPW2+bbPCE5cUmzKWEZzYLH35aVn/WYnYelR52B1Rp8N2l/1YHA4ylCSlGTjJcmnhouTuLicXCderKL5pzbTPZ0/WXZ2da24M9YnvnllYPIvtJ8ruqVxxY4OzHPfJaAB4h7B9CdHUs7FaWu10V8TjPSHw221Zf8AmZGHhc3MIqMbirGK5JTaSLc5SnJynJyk+bby2e5qGtO8s6VtwY4Mb554WDxrHSFaXVW44s8edscsvJ7Qq1KFeFejOVOpTkpQlF8U1yZ3Xo42xpa/YeTXMlDUqMfPj/pF9ZfacHKqdSpTlvU5yhLvi8Mo0nVq2mVushunzXYy7VNLpajS4J7Ncn3HSulXYmdq6mvaZTToS865pRX0H9ZLu7+4wvRLoa1baWNzXg3bWWKsu5zz5q+31Gpu7ummnc1mmsNb74lNKvWpJqlWqU0+e7JrJipe28rxXEaWI5y452z8OXqM07SvG0dCVXMsYUsb/Xmd56UdcWi7M1Oqm43N3mjRxzWVxl6l72cr6MtqKeyu0qv7mjKtb1abpVlH6STaeV60a1VrVqqSq1ak0uW9JvBbJ6vq9TUrhVpLGFhLuNex0SjbWkrWXnKWcvlk7L0ldJeialsxc6TpPW3Fa7ioynKm4xpxym+fbwNO6Idd/knaaNpWqbttfYpSzyU8+a38PWaWexbi1KLaa4prsNK3u6lvXjXjzi8k7fRbW3s5WlNebLOc7vftPoLpR0KOubL1Y0qe9dWma1FpcW0vOXrXvwfPhI8tvP8AW6/7Rkc3NZ1KGo1+vjDheN985+SJ6Rp09PodS58SzttjAAB5J6gAAAAAAAAAAAAAAAAAAAAALtvb17iTjQoVKrXNQi5Y9haL9peXdo5O1uq9By5ulUcc+wGHnGxeWk6q+C028fooS+Rcp6FrdR4ho+oS9FvP5FdPaPX6f0Na1Bf8RL5kintftTT+htBqUfRcS+ZLzTXm7j9KXzLa2W2kf5C1L/8AWl8ixqeh6xplFV9Q0y7taUnuqdWk4rPdkyUNutsI8to9R9dZsiaztPtBrNrG11TV7u7oRlvKnUnmOe/A80hB3fEuJRx7Xn6GMtaXX1lT3t3OXkuVKEFcQpQlLzpbryuRYpOMZpzjvR7VnBIV0oyppRbhCanx+lw8fWFjG5tPOdhCxqynVi1hU4ylnseE39hRRodZSlNyw/xV345l6WoTnWqVJxXnRnFYSX0ljiUxvZRVKMIRjGGM45y5P4oz5o84poUKc6HWSc23PcUY9pTGjT6x05Tlv54YXArjcqEN2nFrFTfWXzXcy3CrCNz1qg1Hjw9KC4dg87lqSipea214ov1aNGNJ1I1XJZwlu8yOy5KpmhGnjlLOTCa3MlzybKeJSyobz83hyzzPba1danKbe7x3Yt8m8Z59h75TFxcJRk4Omo4zya7SmN1UjThThwjHs7+OTPm5MedgoVLNKM4yy84ksciuFGDnNNzahjO7zZVRuo0q1WSg3Ca+jnBbtqkIOXWKTUu4LhG57OlHeqbu+lBJpSXEsEpV6KqzfVNwmkt1yfeOts+quE7WW/NR6mSqYVN54trtyvEw8dgy0RSXK0W5FxlLLhvfR4cs8yISXdZSjutw6tQaz245iOO0PPYPJ4K2pVd+Tc021GOccWvsPLS3VfeTnuvKUe5suULunSt4w3JuSTTam0uOe5luFz1dKEKcUmnltrOX/GDPm53G5ajDMJyeU444espjjeW9wWeJLVxburVcqL6ubTxn/sRarg6knTjuxb4LuIvHYZWSTdWtKlb060KzqRqNqPm45Y+Z7Kz/AA1alCTlKEU145S+Zbr3KqWlChutdU5POeecfIrnd5q1akYtOajjwxj5EsxMblErZxo06knjfljHcLqhGjvRW/JxljexiJ7O6dRLfim1U3+CSXJLHuLl5ewuJpypS3d/ea33613IPh7BuQi/a0oVI1JT33upYUefMpu5UZ3NSdvSlSouTcIOW84ruz2ldpWp0ozjUjKSljkyMcZ3DzjYqp2yqQruLkpU4qSi1xa7QrVdZTpynmUoOTS7OGTylcxpXfXU4vcfBxy+KEbn/HJV5ptPPDPFZWESTj2h57C5QtKda6jRjKpBSXOcTytaRp7s5OcISlu+dHD9PoKfKYK5jWjTccJ5W83l+st16/W0qcZJ78OG9nmhmOBvkrurWVtTXW8Kjbwk8rHeLSjQqxk6lWUd1ZklHPDKX2lN5X8oqRnubuI45izuPJ+t83eVSG6/an9gys+oYeCqVvF2vlEJtp1erUWuPJPPvK42UpXKprMab5SZbjc7tkrdR4qr1m9nwwVxvJqqnxUMptLm1/CMx4e0w+LsK6FlTlbxrVKjW9nCSbfN/IhS3d57rbjng2uOCdSvqcbNW86O9uvK4tZ4vufiWpVbN6f1StZq663e67rOG5j6O7jnntIyxjYys5I9OE6lSNOnFznJ4jFLLb7jLS2W2jjz0PUP2EjE0qk6VWNWnJwnBqUZLmmu02F7c7XtJPaG/wCH/wBwwsdpVXdfbqkvfn7ECezuvw+louor/hp/IoWha202tH1Bpdqtp/Iny212ulz2j1P1XEkW57X7UzWJbQak/wDiJfMz5pCDus+co/F+BAqaRqtNZqaZew/SoSX2EIydXaHXqn09a1GX/Ez+ZjG23l8WRNiPF+oAAEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/9k=" alt="Transitra Logo" style="width:140px;height:auto;margin-bottom:6px;filter:drop-shadow(0 0 20px rgba(0,200,255,0.5)) drop-shadow(0 0 40px rgba(0,100,255,0.25))">
+      <div class="brand" style="font-size:1.45rem;letter-spacing:3px;background:linear-gradient(135deg,#00d4ff,#0099ff,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px">TRANSITRA</div>
+      <p>Smart Travel. Real Time. Every Time.</p>
+    </div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchAuthTab('login',this)">Sign In</button>
+      <button class="login-tab" onclick="switchAuthTab('signup',this)">Sign Up</button>
+    </div>
+    <div id="loginForm">
+      <div class="form-field">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com" value="demo@transitx.pk">
+      </div>
+      <div class="form-field">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="Enter password" value="demo1234">
+      </div>
+      <button class="login-btn" onclick="doLogin()">Sign In →</button>
+      <div class="demo-hint">Demo: <b>demo@transitx.pk</b> / <b>demo1234</b></div>
+    </div>
+    <div id="signupForm" style="display:none">
+      <div class="form-field"><label>Full Name</label><input type="text" placeholder="Ahmed Khan"></div>
+      <div class="form-field"><label>Email</label><input type="email" placeholder="you@example.com"></div>
+      <div class="form-field"><label>Phone</label><input type="tel" placeholder="+92 300 0000000"></div>
+      <div class="form-field"><label>Password</label><input type="password" placeholder="Create password"></div>
+      <button class="login-btn" onclick="doLogin()">Create Account →</button>
+    </div>
+    <div class="login-divider">or continue with</div>
+    <div class="social-login">
+      <button class="social-btn" onclick="doLogin()">🌐 Google</button>
+      <button class="social-btn" onclick="doLogin()">📱 Phone OTP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== NOTIFICATION PANEL ===== -->
+<div class="notif-panel" id="notifPanel">
+  <div class="notif-header">
+    <h4>🔔 Notifications</h4>
+    <button class="mark-read" onclick="markAllRead()">Mark all read</button>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
+<!-- ===== PROFILE PANEL ===== -->
+<div class="profile-panel" id="profilePanel">
+  <div class="pp-header">
+    <h3>My Profile</h3>
+    <button class="close-btn" onclick="toggleProfile()">✕</button>
+  </div>
+  <div class="pp-body">
+    <div class="pp-avatar">
+      <div class="pp-av-circle">AK</div>
+      <div class="pp-name">Ahmed Khan</div>
+      <div class="pp-email">demo@transitx.pk</div>
+      <div class="pp-badge">⭐ Gold Member</div>
+    </div>
+    <div class="pp-stats">
+      <div class="pp-stat"><div class="pp-stat-val">47</div><div class="pp-stat-lbl">Trips</div></div>
+      <div class="pp-stat"><div class="pp-stat-val">12k</div><div class="pp-stat-lbl">KM</div></div>
+      <div class="pp-stat"><div class="pp-stat-val">4.9</div><div class="pp-stat-lbl">Rating</div></div>
+    </div>
+    <div class="pp-section-title" style="margin-top:6px">Account</div>
+    <div class="pp-menu-item"><div class="pp-menu-icon">🎫</div><div class="pp-menu-label">My Bookings</div><div class="pp-menu-arrow">›</div></div>
+    <div class="pp-menu-item"><div class="pp-menu-icon">💳</div><div class="pp-menu-label">Payment Methods</div><div class="pp-menu-arrow">›</div></div>
+    <div class="pp-menu-item"><div class="pp-menu-icon">⭐</div><div class="pp-menu-label">Loyalty Points — 2,400 pts</div><div class="pp-menu-arrow">›</div></div>
+    <div class="pp-menu-item"><div class="pp-menu-icon">📍</div><div class="pp-menu-label">Saved Addresses</div><div class="pp-menu-arrow">›</div></div>
+    <div class="pp-section-title" style="margin-top:16px">Preferences</div>
+    <div class="pp-pref-row"><div class="pp-pref-label">Push Notifications</div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="pp-pref-row"><div class="pp-pref-label">SMS Alerts</div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="pp-pref-row"><div class="pp-pref-label">Email Receipts</div><button class="toggle" onclick="this.classList.toggle('on')"></button></div>
+    <div class="pp-pref-row"><div class="pp-pref-label">Location Services</div><button class="toggle on" onclick="this.classList.toggle('on')"></button></div>
+    <div class="pp-menu-item logout-item" onclick="doLogout()"><div class="pp-menu-icon">🚪</div><div class="pp-menu-label">Sign Out</div></div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"><span id="t-icon">✅</span><span id="t-msg">Done</span></div>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="logo"><img src="data:image/png;base64,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" alt="Transitra" style="height:42px;width:auto;filter:drop-shadow(0 0 10px rgba(0,200,255,0.5))"><span style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;letter-spacing:2px;background:linear-gradient(135deg,#00d4ff,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">TRANSITRA</span></div>
+  <nav>
+    <button class="nav-active" onclick="show('home',this)">🏠 <span>Home</span></button>
+    <button onclick="show('booking',this)">🎫 <span>Book</span></button>
+    <button onclick="show('payment',this)">💳 <span>Payment</span></button>
+    <button onclick="show('routes',this)">🗺️ <span>Routes</span></button>
+    <button onclick="show('weather',this)">🌤️ <span>Weather</span></button>
+    <button onclick="show('reviews',this)">⭐ <span>Reviews</span></button>
+    <button onclick="show('tracking',this)">📡 <span>Tracking</span></button>
+    <button onclick="show('admin',this)">📊 <span>Admin</span></button>
+  </nav>
+  <div class="header-right">
+    <div class="sys-badge"><div class="pulse-dot"></div>Live</div>
+    <div class="notif-btn" onclick="toggleNotif()" id="notifBtn">🔔<div class="notif-count" id="notifCount">4</div></div>
+    <div class="avatar-btn" onclick="toggleProfile()">AK</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ===== HOME ===== -->
+<section id="home" class="active">
+  <div class="hero">
+    <div class="hero-tag">⚡ Pakistan's #1 Transport Platform</div>
+    <h1>Travel Smarter,<br>Go <span class="hl">Further</span></h1>
+    <p>Book rides, track vehicles live, check route weather, and manage everything from one powerful platform.</p>
+    <div class="hero-btns">
+      <button class="btn-p" onclick="show('booking',document.querySelectorAll('nav button')[1])">🎫 Book Now</button>
+      <button class="btn-s" onclick="show('tracking',document.querySelectorAll('nav button')[6])">📡 Live Track</button>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num" data-target="24800">0</div><div class="stat-lbl">Daily Passengers</div></div>
+    <div class="stat-card"><div class="stat-num" data-target="648">0</div><div class="stat-lbl">Active Vehicles</div></div>
+    <div class="stat-card"><div class="stat-num" data-target="124">0</div><div class="stat-lbl">Routes</div></div>
+    <div class="stat-card"><div class="stat-num" data-target="98">0</div><div class="stat-lbl">% On-Time</div></div>
+    <div class="stat-card"><div class="stat-num" data-target="52000">0</div><div class="stat-lbl">Happy Users</div></div>
+  </div>
+  <div class="divider"><div class="div-line"></div><h3>Platform Features</h3><div class="div-line"></div></div>
+  <div class="feat-grid">
+    <div class="feat-card" onclick="show('booking',document.querySelectorAll('nav button')[1])"><div class="f-icon fi-b">🎫</div><h3>Smart Booking</h3><p>Book bus, train or taxi instantly with QR ticket and live seat availability.</p></div>
+    <div class="feat-card" onclick="show('payment',document.querySelectorAll('nav button')[2])"><div class="f-icon fi-g">💳</div><h3>Secure Payment</h3><p>Pay via card, JazzCash, Easypaisa or cash. Instant payment confirmation.</p></div>
+    <div class="feat-card" onclick="show('tracking',document.querySelectorAll('nav button')[6])"><div class="f-icon fi-p">📡</div><h3>GPS Tracking</h3><p>Real-time vehicle tracking on interactive map with journey progress.</p></div>
+    <div class="feat-card" onclick="show('weather',document.querySelectorAll('nav button')[4])"><div class="f-icon fi-y">🌤️</div><h3>Route Weather</h3><p>Live weather for each route. Get alerts before you travel.</p></div>
+    <div class="feat-card" onclick="show('reviews',document.querySelectorAll('nav button')[5])"><div class="f-icon fi-w">⭐</div><h3>Reviews & Ratings</h3><p>Read real traveller reviews. Rate your journey and help others decide.</p></div>
+    <div class="feat-card" onclick="show('admin',document.querySelectorAll('nav button')[7])"><div class="f-icon fi-r">📊</div><h3>Admin Dashboard</h3><p>Full analytics, fleet management and real-time operational data.</p></div>
+  </div>
+</section>
+
+<!-- ===== BOOKING ===== -->
+<section id="booking">
+  <div class="sec-header"><h2>Book Your Ride</h2><p>Choose transport and get a digital QR ticket instantly</p></div>
+  <div class="booking-layout">
+    <div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">🎫</span>New Booking</div>
+        <div class="transport-picker">
+          <div class="t-opt sel" onclick="selT(this,'Bus')"><span class="ti">🚌</span><span class="tn">Bus</span></div>
+          <div class="t-opt" onclick="selT(this,'Train')"><span class="ti">🚂</span><span class="tn">Train</span></div>
+          <div class="t-opt" onclick="selT(this,'Taxi')"><span class="ti">🚕</span><span class="tn">Taxi</span></div>
+        </div>
+        <div class="fg"><label>Passenger Name</label><input type="text" id="bName" placeholder="Your full name"></div>
+        <div class="fg"><label>Route</label>
+          <div class="swap-wrap">
+            <div class="fg" style="margin:0"><input type="text" id="bFrom" placeholder="From city..." style="margin:0"></div>
+            <button class="swap-btn" onclick="swapCities()">⇄</button>
+            <div class="fg" style="margin:0"><input type="text" id="bTo" placeholder="To city..." style="margin:0"></div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Date</label><input type="date" id="bDate"></div>
+          <div class="fg"><label>Seats</label><select id="bSeats"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+        </div>
+        <div class="fg"><label>Class</label><select id="bClass"><option>Economy</option><option>Business</option><option>First Class</option></select></div>
+        <button class="book-btn" onclick="doBook()">🎫 Confirm & Get Ticket</button>
+      </div>
+      <div class="ticket-wrap" id="ticketWrap">
+        <div class="tk-head"><span>Transitra</span><span id="tkId" style="font-size:0.72rem;opacity:0.75">#TX000000</span></div>
+        <div class="tk-body">
+          <div class="tk-route">
+            <div class="tk-city"><div class="cl">From</div><div class="cn" id="tk-from">—</div></div>
+            <div class="tk-arrow">✈</div>
+            <div class="tk-city" style="text-align:right"><div class="cl">To</div><div class="cn" id="tk-to">—</div></div>
+          </div>
+          <div class="tk-details">
+            <div class="tk-det"><div class="dl">Passenger</div><div class="dv" id="tk-name">—</div></div>
+            <div class="tk-det"><div class="dl">Transport</div><div class="dv" id="tk-trans">—</div></div>
+            <div class="tk-det"><div class="dl">Date</div><div class="dv" id="tk-date">—</div></div>
+            <div class="tk-det"><div class="dl">Class</div><div class="dv" id="tk-class">—</div></div>
+            <div class="tk-det"><div class="dl">Seats</div><div class="dv" id="tk-seats">—</div></div>
+            <div class="tk-det"><div class="dl">Fare</div><div class="dv" id="tk-fare" style="color:var(--accent)">—</div></div>
+          </div>
+          <div class="tk-qr"><span style="font-size:2.5rem;display:block;margin-bottom:5px">▪▫▪<br>▫▪▫<br>▪▫▪</span>Scan at terminal gate</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-title"><span class="c-icon">📋</span>My Bookings</div>
+        <div class="rides-list" id="myBookings">
+          <div class="ride-item"><div class="r-icon">🚂</div><div class="r-info"><div class="r-route">Karachi → Lahore</div><div class="r-time">Today, 18:30 · Train · Economy</div></div><div class="r-status s-ok">Confirmed</div></div>
+          <div class="ride-item"><div class="r-icon">🚌</div><div class="r-info"><div class="r-route">Islamabad → Peshawar</div><div class="r-time">Tomorrow, 08:00 · Bus · Business</div></div><div class="r-status s-pend">Pending</div></div>
+          <div class="ride-item"><div class="r-icon">🚕</div><div class="r-info"><div class="r-route">Lahore → Faisalabad</div><div class="r-time">Jun 22, 14:00 · Taxi · Economy</div></div><div class="r-status s-ok">Confirmed</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">💡</span>Fare Estimator</div>
+        <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:18px;border:1px solid var(--border2)">
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px">ESTIMATED FARE</div>
+          <div style="display:flex;justify-content:space-between">
+            <div><div style="font-size:0.8rem;color:var(--text2)">Economy</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)">PKR 2,400</div></div>
+            <div style="text-align:right"><div style="font-size:0.8rem;color:var(--text2)">Business</div><div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#a78bfa">PKR 4,200</div></div>
+          </div>
+        </div>
+        <div style="font-size:0.74rem;color:var(--muted);text-align:center;margin-top:10px">Fares vary by route & date. Taxes included.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PAYMENT ===== -->
+<section id="payment">
+  <div class="sec-header"><h2>Payment & Checkout</h2><p>Complete your booking securely</p></div>
+  <div class="pay-layout">
+    <div>
+      <div class="card" id="payForm">
+        <div class="card-title"><span class="c-icon">💳</span>Payment Method</div>
+        <div class="payment-methods">
+          <div class="pay-method sel-pay" onclick="selPay(this)"><span class="pm-icon">💳</span><div class="pm-name">Credit / Debit Card</div></div>
+          <div class="pay-method" onclick="selPay(this)"><span class="pm-icon">📱</span><div class="pm-name">JazzCash</div></div>
+          <div class="pay-method" onclick="selPay(this)"><span class="pm-icon">🟢</span><div class="pm-name">Easypaisa</div></div>
+          <div class="pay-method" onclick="selPay(this)"><span class="pm-icon">💵</span><div class="pm-name">Cash on Board</div></div>
+        </div>
+        <div id="cardFields">
+          <div class="fg"><label>Cardholder Name</label><input type="text" placeholder="Ahmed Khan" id="cardName"></div>
+          <div class="fg"><label>Card Number</label><div class="card-input-wrap"><input type="text" placeholder="0000 0000 0000 0000" maxlength="19" id="cardNum" oninput="fmtCard(this)"><span class="card-logo">💳</span></div></div>
+          <div class="frow">
+            <div class="fg"><label>Expiry</label><input type="text" placeholder="MM/YY" maxlength="5" id="cardExp" oninput="fmtExp(this)"></div>
+            <div class="fg"><label>CVV</label><input type="password" placeholder="•••" maxlength="3" id="cardCvv"></div>
+          </div>
+        </div>
+        <button class="pay-now-btn" onclick="doPay()">🔒 Pay Securely</button>
+        <div class="pay-secure">🔒 SSL Encrypted · PCI DSS Compliant · Instant Confirmation</div>
+      </div>
+      <div class="pay-success" id="paySuccess">
+        <div class="check">✅</div>
+        <h3>Payment Successful!</h3>
+        <p>Your booking is confirmed. A receipt has been sent to your email and phone.</p>
+        <div class="pay-ref" id="payRef">#PAY-000000</div>
+        <button class="btn-p" style="margin:20px auto 0;display:inline-flex" onclick="show('booking',document.querySelectorAll('nav button')[1])">View My Bookings →</button>
+      </div>
+    </div>
+    <div>
+      <div class="pay-summary">
+        <h3>Order Summary</h3>
+        <div class="pay-row"><span class="pr-lbl">Route</span><span class="pr-val" id="ps-route">Karachi → Lahore</span></div>
+        <div class="pay-row"><span class="pr-lbl">Transport</span><span class="pr-val" id="ps-trans">Train</span></div>
+        <div class="pay-row"><span class="pr-lbl">Class</span><span class="pr-val" id="ps-class">Economy</span></div>
+        <div class="pay-row"><span class="pr-lbl">Date</span><span class="pr-val" id="ps-date">—</span></div>
+        <div class="pay-row"><span class="pr-lbl">Seats</span><span class="pr-val" id="ps-seats">1</span></div>
+        <div class="pay-row"><span class="pr-lbl">Base Fare</span><span class="pr-val" id="ps-base">PKR 2,400</span></div>
+        <div class="pay-row"><span class="pr-lbl">Service Fee</span><span class="pr-val">PKR 120</span></div>
+        <div class="pay-row"><span class="pr-lbl">Tax (5%)</span><span class="pr-val" id="ps-tax">PKR 126</span></div>
+        <div class="pay-total"><span class="pt-lbl">Total</span><span class="pt-val" id="ps-total">PKR 2,646</span></div>
+        <div style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.15);border-radius:var(--radius-sm);padding:12px 14px;margin-top:16px;font-size:0.78rem;color:var(--accent3)">
+          ✅ Refundable up to 24h before departure. Free cancellation.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ROUTES ===== -->
+<section id="routes">
+  <div class="sec-header"><h2>Explore Routes</h2><p>All available transport routes across Pakistan</p></div>
+  <div class="rsearch-wrap"><span class="si">🔍</span><input type="text" id="rSearch" placeholder="Search city, route, or transport..." oninput="filterR()"></div>
+  <div class="chips">
+    <div class="chip on" onclick="setChip('all',this)">All</div>
+    <div class="chip" onclick="setChip('Bus',this)">🚌 Bus</div>
+    <div class="chip" onclick="setChip('Train',this)">🚂 Train</div>
+    <div class="chip" onclick="setChip('Taxi',this)">🚕 Taxi</div>
+    <div class="chip" onclick="setChip('Ferry',this)">⛴️ Ferry</div>
+  </div>
+  <div class="routes-grid" id="routesGrid"></div>
+</section>
+
+<!-- ===== WEATHER ===== -->
+<section id="weather">
+  <div class="sec-header"><h2>Route Weather</h2><p>Live weather conditions across Pakistan travel routes</p></div>
+  <div class="weather-layout">
+    <div>
+      <div class="weather-main">
+        <select class="weather-city-sel" id="weatherCity" onchange="updateWeather()">
+          <option value="karachi">Karachi</option>
+          <option value="lahore">Lahore</option>
+          <option value="islamabad">Islamabad</option>
+          <option value="peshawar">Peshawar</option>
+          <option value="quetta">Quetta</option>
+          <option value="multan">Multan</option>
+          <option value="hyderabad">Hyderabad</option>
+        </select>
+        <span class="weather-icon-big" id="w-icon">☀️</span>
+        <div class="weather-temp" id="w-temp">34°C</div>
+        <div class="weather-desc" id="w-desc">Clear Sky</div>
+        <div class="weather-stats">
+          <div class="ws-item"><div class="ws-val" id="w-hum">62%</div><div class="ws-lbl">Humidity</div></div>
+          <div class="ws-item"><div class="ws-val" id="w-wind">18 km/h</div><div class="ws-lbl">Wind</div></div>
+          <div class="ws-item"><div class="ws-val" id="w-vis">10 km</div><div class="ws-lbl">Visibility</div></div>
+        </div>
+        <div class="forecast-row" id="forecastRow"></div>
+      </div>
+      <div class="weather-alert" id="weatherAlert" style="display:none">
+        <div class="wa-icon">⚠️</div>
+        <div class="wa-text" id="alertText">Weather alert for this route</div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">🛣️</span>Route Conditions</div>
+        <div class="route-weather-list" id="routeWeatherList"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REVIEWS ===== -->
+<section id="reviews">
+  <div class="sec-header"><h2>Reviews & Ratings</h2><p>What travellers are saying about Transitra routes</p></div>
+  <div class="reviews-layout">
+    <div>
+      <div class="rating-overview card">
+        <div class="big-rating">4.7</div>
+        <div class="star-row">⭐⭐⭐⭐⭐</div>
+        <div class="rating-count">Based on 3,284 reviews</div>
+        <div class="rating-bars">
+          <div class="rb-row"><span class="rb-label">5</span><div class="rb-track"><div class="rb-fill" style="width:72%"></div></div><span class="rb-count">2,364</span></div>
+          <div class="rb-row"><span class="rb-label">4</span><div class="rb-track"><div class="rb-fill" style="width:18%"></div></div><span class="rb-count">591</span></div>
+          <div class="rb-row"><span class="rb-label">3</span><div class="rb-track"><div class="rb-fill" style="width:6%"></div></div><span class="rb-count">197</span></div>
+          <div class="rb-row"><span class="rb-label">2</span><div class="rb-track"><div class="rb-fill" style="width:3%"></div></div><span class="rb-count">98</span></div>
+          <div class="rb-row"><span class="rb-label">1</span><div class="rb-track"><div class="rb-fill" style="width:1%"></div></div><span class="rb-count">34</span></div>
+        </div>
+      </div>
+      <div class="write-review" style="margin-top:16px">
+        <h4>Write a Review</h4>
+        <div class="fg"><label>Route</label><select style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;width:100%;outline:none"><option>Karachi → Lahore</option><option>Islamabad → Peshawar</option><option>Lahore → Faisalabad</option></select></div>
+        <div class="star-input" id="starInput" onclick="setStars(event)">
+          <span data-v="1">★</span><span data-v="2">★</span><span data-v="3">★</span><span data-v="4">★</span><span data-v="5">★</span>
+        </div>
+        <textarea class="review-ta" id="reviewText" placeholder="Share your experience..."></textarea>
+        <button class="submit-rev" onclick="submitReview()">Submit Review ✨</button>
+      </div>
+    </div>
+    <div>
+      <div class="filter-sort">
+        <select class="sort-select" onchange="sortRevs(this.value)">
+          <option value="recent">Most Recent</option>
+          <option value="top">Top Rated</option>
+          <option value="low">Lowest Rated</option>
+        </select>
+        <div class="chips" style="margin:0">
+          <div class="chip on" style="font-size:0.72rem;padding:5px 11px" onclick="filterRevs('all',this)">All</div>
+          <div class="chip" style="font-size:0.72px;padding:5px 11px" onclick="filterRevs('5',this)">5⭐</div>
+          <div class="chip" style="font-size:0.72rem;padding:5px 11px" onclick="filterRevs('4',this)">4⭐</div>
+        </div>
+      </div>
+      <div class="reviews-list" id="reviewsList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TRACKING ===== -->
+<section id="tracking">
+  <div class="sec-header"><h2>Live Vehicle Tracking</h2><p>Real-time GPS monitoring of all active fleet</p></div>
+  <div class="track-layout">
+    <div>
+      <div id="map"></div>
+      <div class="track-controls">
+        <button class="tb tb-p" onclick="startTrack()">▶ Start Tracking</button>
+        <button class="tb tb-s" onclick="stopTrack()">⏹ Stop</button>
+      </div>
+    </div>
+    <div class="track-panel">
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between"><span style="display:flex;align-items:center;gap:9px"><span class="c-icon">🚗</span>Active Vehicles</span><span class="live-badge"><span class="live-dot"></span>LIVE</span></div>
+        <div id="vehicleList"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">🗺️</span>Journey Progress</div>
+        <div class="progress-track" id="journeyTrack"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ADMIN ===== -->
+<section id="admin">
+  <div class="sec-header"><h2>Admin Dashboard</h2><p>Operations overview and fleet analytics</p></div>
+  <div class="admin-grid">
+    <div class="admin-kpi kpi-blue"><div class="kpi-top"><div class="kpi-label">Total Revenue</div><div class="kpi-icon">💰</div></div><div class="kpi-val" style="color:var(--accent)">₨4.2M</div><div class="kpi-change up">↑ 14.3% this month</div></div>
+    <div class="admin-kpi kpi-green"><div class="kpi-top"><div class="kpi-label">Active Bookings</div><div class="kpi-icon">🎫</div></div><div class="kpi-val" style="color:var(--accent3)">1,847</div><div class="kpi-change up">↑ 8.1% today</div></div>
+    <div class="admin-kpi kpi-purple"><div class="kpi-top"><div class="kpi-label">Vehicles Online</div><div class="kpi-icon">🚗</div></div><div class="kpi-val" style="color:#a78bfa">312</div><div class="kpi-change down">↓ 3 offline</div></div>
+    <div class="admin-kpi kpi-yellow"><div class="kpi-top"><div class="kpi-label">On-Time Rate</div><div class="kpi-icon">⏱️</div></div><div class="kpi-val" style="color:var(--warn)">97.8%</div><div class="kpi-change up">↑ 2.1% vs last week</div></div>
+    <div class="admin-kpi kpi-red"><div class="kpi-top"><div class="kpi-label">Support Tickets</div><div class="kpi-icon">🎟️</div></div><div class="kpi-val" style="color:var(--danger)">24</div><div class="kpi-change down">↑ 6 new today</div></div>
+  </div>
+  <div class="admin-bottom">
+    <div>
+      <div class="chart-area">
+        <h3>Weekly Bookings <div class="chart-period"><button class="cp-btn on" onclick="cpBtn(this)">7D</button><button class="cp-btn" onclick="cpBtn(this)">30D</button><button class="cp-btn" onclick="cpBtn(this)">90D</button></div></h3>
+        <div class="bar-chart" id="barChart"></div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title"><span class="c-icon">📋</span>Recent Transactions</div>
+        <table class="recent-table">
+          <thead><tr><th>ID</th><th>Route</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead>
+          <tbody id="txTable"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="admin-right">
+      <div class="card">
+        <div class="card-title"><span class="c-icon">🚦</span>Fleet Status</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--border2)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:0.8rem">Buses Online</span><span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent3)">142/150</span></div>
+            <div style="height:6px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="width:94%;height:100%;background:var(--accent3);border-radius:4px"></div></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--border2)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:0.8rem">Trains Active</span><span style="font-family:'Syne',sans-serif;font-weight:700;color:#a78bfa">28/30</span></div>
+            <div style="height:6px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="width:93%;height:100%;background:#7c3aed;border-radius:4px"></div></div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--border2)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:0.8rem">Taxis Available</span><span style="font-family:'Syne',sans-serif;font-weight:700;color:var(--warn)">142/200</span></div>
+            <div style="height:6px;background:var(--surface3);border-radius:4px;overflow:hidden"><div style="width:71%;height:100%;background:var(--warn);border-radius:4px"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">⚠️</span>Alerts</div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="adminAlerts"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="c-icon">🌍</span>Live Map Snapshot</div>
+        <div class="admin-map-mini" id="adminMap"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+// ===== AUTH =====
+function switchAuthTab(tab, btn) {
+  document.querySelectorAll('.login-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('signupForm').style.display = tab === 'signup' ? 'block' : 'none';
+}
+function doLogin() {
+  const o = document.getElementById('loginOverlay');
+  o.classList.add('hiding');
+  setTimeout(() => { o.style.display = 'none'; }, 500);
+  toast('Welcome back, Ahmed! 👋', '🚀');
+}
+function doLogout() {
+  location.reload();
+}
+
+// ===== NAV =====
+function show(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active'));
+  if (btn) btn.classList.add('nav-active');
+  if (id === 'tracking') initMap();
+  if (id === 'routes') renderRoutes();
+  if (id === 'weather') initWeather();
+  if (id === 'reviews') renderReviews();
+  if (id === 'admin') initAdmin();
+  if (id === 'payment') syncPayment();
+  document.getElementById('notifPanel').classList.remove('open');
+  document.getElementById('profilePanel').classList.remove('open');
+}
+
+// ===== TOAST =====
+function toast(msg, icon = '✅') {
+  document.getElementById('t-msg').textContent = msg;
+  document.getElementById('t-icon').textContent = icon;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ===== COUNTERS =====
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const el = e.target, target = +el.dataset.target, dur = 1600;
+      const start = performance.now();
+      const tick = now => {
+        const p = Math.min((now - start) / dur, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(ease * target).toLocaleString() + (p >= 1 ? '+' : '');
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      io.unobserve(el);
+    }
+  });
+});
+document.querySelectorAll('[data-target]').forEach(el => io.observe(el));
+
+// ===== NOTIFICATIONS =====
+const notifications = [
+  { icon: '🎫', type: 'ni-info', title: 'Booking Confirmed', desc: 'Your Karachi → Lahore train is confirmed for today 18:30.', time: '2 min ago', unread: true },
+  { icon: '⚠️', type: 'ni-warn', title: 'Delay Alert', desc: 'Bus BUS-042 delayed by 15 minutes due to road works near M9.', time: '18 min ago', unread: true },
+  { icon: '💳', type: 'ni-success', title: 'Payment Received', desc: 'PKR 2,646 payment confirmed for booking #TX847291.', time: '1 hr ago', unread: true },
+  { icon: '🌧️', type: 'ni-warn', title: 'Weather Alert', desc: 'Heavy rain expected on Lahore → Islamabad route today.', time: '2 hrs ago', unread: true },
+  { icon: '⭐', type: 'ni-info', title: 'Rate Your Journey', desc: 'How was your Karachi → Hyderabad trip? Share a review!', time: '3 hrs ago', unread: false },
+  { icon: '🎁', type: 'ni-success', title: 'Loyalty Reward', desc: 'You earned 240 bonus points! Total: 2,400 pts.', time: 'Yesterday', unread: false },
+];
+function renderNotifs() {
+  document.getElementById('notifList').innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.unread ? 'unread' : ''}" onclick="this.classList.remove('unread')">
+      <div class="notif-icon ${n.type}">${n.icon}</div>
+      <div class="notif-text">
+        <div class="n-title">${n.title}</div>
+        <div class="n-desc">${n.desc}</div>
+        <div class="n-time">${n.time}</div>
+      </div>
+      ${n.unread ? '<div class="unread-dot"></div>' : ''}
+    </div>`).join('');
+}
+renderNotifs();
+function toggleNotif() {
+  document.getElementById('notifPanel').classList.toggle('open');
+  document.getElementById('profilePanel').classList.remove('open');
+}
+function markAllRead() {
+  notifications.forEach(n => n.unread = false);
+  document.getElementById('notifCount').textContent = '0';
+  renderNotifs();
+  toast('All notifications marked as read', '✅');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#notifPanel') && !e.target.closest('#notifBtn'))
+    document.getElementById('notifPanel').classList.remove('open');
+  if (!e.target.closest('.profile-panel') && !e.target.closest('.avatar-btn'))
+    document.getElementById('profilePanel').classList.remove('open');
+});
+
+// ===== PROFILE =====
+function toggleProfile() {
+  document.getElementById('profilePanel').classList.toggle('open');
+  document.getElementById('notifPanel').classList.remove('open');
+}
+
+// ===== BOOKING =====
+let selTransport = 'Bus';
+document.getElementById('bDate').valueAsDate = new Date(Date.now() + 86400000);
+function selT(el, t) {
+  document.querySelectorAll('.t-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel'); selTransport = t;
+}
+function swapCities() {
+  const f = document.getElementById('bFrom'), t = document.getElementById('bTo');
+  [f.value, t.value] = [t.value, f.value];
+}
+function doBook() {
+  const name = document.getElementById('bName').value.trim();
+  const from = document.getElementById('bFrom').value.trim();
+  const to = document.getElementById('bTo').value.trim();
+  const date = document.getElementById('bDate').value;
+  const seats = document.getElementById('bSeats').value;
+  const cls = document.getElementById('bClass').value;
+  if (!name || !from || !to) { toast('Please fill all fields', '⚠️'); return; }
+  const fares = { Economy: 2400, Business: 4200, 'First Class': 6800 };
+  const fare = fares[cls] * +seats;
+  const id = '#TX' + Math.floor(Math.random() * 900000 + 100000);
+  document.getElementById('tkId').textContent = id;
+  document.getElementById('tk-from').textContent = from;
+  document.getElementById('tk-to').textContent = to;
+  document.getElementById('tk-name').textContent = name;
+  document.getElementById('tk-trans').textContent = selTransport;
+  document.getElementById('tk-date').textContent = new Date(date).toLocaleDateString('en-PK', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+  document.getElementById('tk-class').textContent = cls;
+  document.getElementById('tk-seats').textContent = seats;
+  document.getElementById('tk-fare').textContent = 'PKR ' + fare.toLocaleString();
+  document.getElementById('ticketWrap').style.display = 'block';
+  const icons = { Bus:'🚌', Train:'🚂', Taxi:'🚕' };
+  const li = document.createElement('div');
+  li.className = 'ride-item';
+  li.innerHTML = `<div class="r-icon">${icons[selTransport]}</div><div class="r-info"><div class="r-route">${from} → ${to}</div><div class="r-time">${document.getElementById('tk-date').textContent} · ${selTransport} · ${cls}</div></div><div class="r-status s-ok">Confirmed</div>`;
+  document.getElementById('myBookings').prepend(li);
+  // sync payment
+  lastBooking = { route: from + ' → ' + to, trans: selTransport, cls, date: document.getElementById('tk-date').textContent, seats, fare };
+  toast(`Booking confirmed! ${id} 🎫`, '✅');
+  notifications.unshift({ icon:'🎫', type:'ni-success', title:'Booking Confirmed', desc:`${from} → ${to} ${selTransport} confirmed for ${document.getElementById('tk-date').textContent}`, time:'Just now', unread:true });
+  document.getElementById('notifCount').textContent = notifications.filter(n=>n.unread).length;
+  renderNotifs();
+}
+
+// ===== PAYMENT =====
+let lastBooking = { route: 'Karachi → Lahore', trans: 'Train', cls: 'Economy', date: 'Today', seats: '1', fare: 2400 };
+function syncPayment() {
+  document.getElementById('ps-route').textContent = lastBooking.route;
+  document.getElementById('ps-trans').textContent = lastBooking.trans;
+  document.getElementById('ps-class').textContent = lastBooking.cls;
+  document.getElementById('ps-date').textContent = lastBooking.date;
+  document.getElementById('ps-seats').textContent = lastBooking.seats;
+  const base = lastBooking.fare || 2400;
+  const tax = Math.round(base * 0.05) + 120;
+  document.getElementById('ps-base').textContent = 'PKR ' + base.toLocaleString();
+  document.getElementById('ps-tax').textContent = 'PKR ' + tax.toLocaleString();
+  document.getElementById('ps-total').textContent = 'PKR ' + (base + tax).toLocaleString();
+}
+function selPay(el) {
+  document.querySelectorAll('.pay-method').forEach(m => m.classList.remove('sel-pay'));
+  el.classList.add('sel-pay');
+  document.getElementById('cardFields').style.display = el.querySelector('.pm-name').textContent.includes('Card') ? 'block' : 'none';
+}
+function fmtCard(el) {
+  let v = el.value.replace(/\D/g, '').substring(0, 16);
+  el.value = v.match(/.{1,4}/g)?.join(' ') || v;
+}
+function fmtExp(el) {
+  let v = el.value.replace(/\D/g, '').substring(0, 4);
+  if (v.length >= 2) v = v.substring(0,2) + '/' + v.substring(2);
+  el.value = v;
+}
+function doPay() {
+  const ref = '#PAY-' + Math.floor(Math.random()*900000+100000);
+  document.getElementById('payRef').textContent = ref;
+  document.getElementById('payForm').style.display = 'none';
+  document.getElementById('paySuccess').style.display = 'block';
+  toast('Payment successful! ' + ref, '💳');
+  notifications.unshift({ icon:'💳', type:'ni-success', title:'Payment Successful', desc:`${ref} — ${document.getElementById('ps-total').textContent} paid.`, time:'Just now', unread:true });
+  document.getElementById('notifCount').textContent = notifications.filter(n=>n.unread).length;
+  renderNotifs();
+}
+
+// ===== ROUTES DATA =====
+const allRoutes = [
+  { from:'Karachi',to:'Lahore',type:'Train',price:2800,dur:'14h',seats:42,fill:78 },
+  { from:'Karachi',to:'Islamabad',type:'Bus',price:3200,dur:'16h',seats:18,fill:55 },
+  { from:'Lahore',to:'Faisalabad',type:'Bus',price:850,dur:'2.5h',seats:30,fill:40 },
+  { from:'Islamabad',to:'Rawalpindi',type:'Taxi',price:400,dur:'45m',seats:3,fill:90 },
+  { from:'Peshawar',to:'Islamabad',type:'Bus',price:1200,dur:'3.5h',seats:22,fill:65 },
+  { from:'Quetta',to:'Karachi',type:'Train',price:1900,dur:'12h',seats:60,fill:30 },
+  { from:'Multan',to:'Lahore',type:'Train',price:1100,dur:'4h',seats:48,fill:72 },
+  { from:'Sialkot',to:'Lahore',type:'Bus',price:700,dur:'2h',seats:25,fill:50 },
+  { from:'Hyderabad',to:'Karachi',type:'Bus',price:600,dur:'2.5h',seats:35,fill:85 },
+  { from:'Gujranwala',to:'Islamabad',type:'Taxi',price:2200,dur:'5h',seats:4,fill:25 },
+  { from:'Lahore',to:'Islamabad',type:'Train',price:1600,dur:'4.5h',seats:80,fill:60 },
+  { from:'Karachi',to:'Gwadar',type:'Ferry',price:3500,dur:'18h',seats:120,fill:20 },
+];
+let rFilter = 'all';
+const bMap = { Bus:'b-bus', Train:'b-train', Taxi:'b-taxi', Ferry:'b-ferry' };
+const eMap = { Bus:'🚌', Train:'🚂', Taxi:'🚕', Ferry:'⛴️' };
+function setChip(f, el) {
+  rFilter = f;
+  document.querySelectorAll('.chips .chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  filterR();
+}
+function filterR() {
+  const q = document.getElementById('rSearch').value.toLowerCase();
+  const f = allRoutes.filter(r => (r.from+r.to+r.type).toLowerCase().includes(q) && (rFilter==='all'||r.type===rFilter));
+  document.getElementById('routesGrid').innerHTML = f.length ? f.map((r,i) => `
+    <div class="rc" style="animation-delay:${i*0.04}s">
+      <div class="rc-top"><div class="rc-cities">${eMap[r.type]} ${r.from} → ${r.to}</div><span class="rc-badge ${bMap[r.type]}">${r.type}</span></div>
+      <div class="rc-meta"><span>⏱ ${r.dur}</span><span>💺 ${r.seats} left</span></div>
+      <div class="rc-bar"><div class="rc-fill" style="width:${r.fill}%"></div></div>
+      <div class="rc-foot"><div><div class="rc-price">PKR ${r.price.toLocaleString()}</div><div class="rc-seats">${100-r.fill}% capacity</div></div><button class="bk-btn" onclick="quickBook('${r.from}','${r.to}','${r.type}')">Book →</button></div>
+    </div>`) .join('') : '<p style="color:var(--text2);text-align:center;padding:40px;grid-column:1/-1">No routes found.</p>';
+  setTimeout(() => document.querySelectorAll('.rc-fill').forEach(b => { const w=b.style.width; b.style.width='0'; setTimeout(()=>b.style.width=w,100); }), 50);
+}
+function renderRoutes() { filterR(); }
+function quickBook(from, to, type) {
+  document.getElementById('bFrom').value = from;
+  document.getElementById('bTo').value = to;
+  document.querySelectorAll('.t-opt').forEach(o => { o.classList.remove('sel'); if(o.querySelector('.tn').textContent===type){o.classList.add('sel');selTransport=type;} });
+  show('booking', document.querySelectorAll('nav button')[1]);
+  toast(`Route set: ${from} → ${to} ✈️`, '🗺️');
+}
+
+// ===== WEATHER =====
+const weatherData = {
+  karachi:   { icon:'☀️', temp:34, desc:'Clear Sky',     hum:'62%', wind:'18 km/h', vis:'10 km', alert:null, forecast:[{d:'Mon',i:'☀️',t:'35°'},{d:'Tue',i:'⛅',t:'32°'},{d:'Wed',i:'🌧️',t:'29°'},{d:'Thu',i:'⛅',t:'31°'},{d:'Fri',i:'☀️',t:'33°'}] },
+  lahore:    { icon:'⛅', temp:38, desc:'Partly Cloudy',  hum:'55%', wind:'12 km/h', vis:'8 km',  alert:'Heat advisory: temperatures above 38°C expected. Stay hydrated.', forecast:[{d:'Mon',i:'🌤️',t:'38°'},{d:'Tue',i:'🌩️',t:'34°'},{d:'Wed',i:'🌧️',t:'30°'},{d:'Thu',i:'⛅',t:'33°'},{d:'Fri',i:'☀️',t:'36°'}] },
+  islamabad: { icon:'🌤️', temp:28, desc:'Mostly Sunny',  hum:'70%', wind:'22 km/h', vis:'12 km', alert:null, forecast:[{d:'Mon',i:'🌤️',t:'28°'},{d:'Tue',i:'⛅',t:'26°'},{d:'Wed',i:'🌦️',t:'24°'},{d:'Thu',i:'🌤️',t:'27°'},{d:'Fri',i:'☀️',t:'30°'}] },
+  peshawar:  { icon:'🌪️', temp:36, desc:'Dusty Wind',    hum:'35%', wind:'40 km/h', vis:'4 km',  alert:'Dust storm warning: visibility reduced. Consider postponing travel.', forecast:[{d:'Mon',i:'🌪️',t:'36°'},{d:'Tue',i:'🌤️',t:'32°'},{d:'Wed',i:'☀️',t:'34°'},{d:'Thu',i:'☀️',t:'35°'},{d:'Fri',i:'⛅',t:'31°'}] },
+  quetta:    { icon:'❄️', temp:14, desc:'Cold & Windy',   hum:'80%', wind:'30 km/h', vis:'6 km',  alert:null, forecast:[{d:'Mon',i:'❄️',t:'14°'},{d:'Tue',i:'🌨️',t:'12°'},{d:'Wed',i:'🌨️',t:'10°'},{d:'Thu',i:'⛅',t:'15°'},{d:'Fri',i:'🌤️',t:'17°'}] },
+  multan:    { icon:'🔥', temp:42, desc:'Extreme Heat',   hum:'25%', wind:'8 km/h',  vis:'10 km', alert:'Extreme heat warning: 42°C. Avoid outdoor travel 11am–4pm.', forecast:[{d:'Mon',i:'🔥',t:'42°'},{d:'Tue',i:'☀️',t:'40°'},{d:'Wed',i:'☀️',t:'41°'},{d:'Thu',i:'⛅',t:'38°'},{d:'Fri',i:'⛅',t:'37°'}] },
+  hyderabad: { icon:'⛅', temp:36, desc:'Humid & Cloudy', hum:'78%', wind:'15 km/h', vis:'7 km',  alert:null, forecast:[{d:'Mon',i:'⛅',t:'36°'},{d:'Tue',i:'🌦️',t:'33°'},{d:'Wed',i:'🌧️',t:'30°'},{d:'Thu',i:'⛅',t:'32°'},{d:'Fri',i:'☀️',t:'34°'}] },
+};
+const routeWeatherList = [
+  { route:'Karachi → Lahore', icon:'🌤️', cond:'Clear → Partly Cloudy', temp:'34–38°C' },
+  { route:'Lahore → Islamabad', icon:'⛅', cond:'Partly Cloudy → Sunny', temp:'38–28°C' },
+  { route:'Islamabad → Peshawar', icon:'🌪️', cond:'Sunny → Dusty Wind', temp:'28–36°C' },
+  { route:'Karachi → Hyderabad', icon:'☀️', cond:'Clear → Humid', temp:'34–36°C' },
+  { route:'Quetta → Karachi', icon:'❄️', cond:'Cold → Clear', temp:'14–34°C' },
+  { route:'Multan → Lahore', icon:'🔥', cond:'Extreme Heat → Cloudy', temp:'42–38°C' },
+];
+function initWeather() { updateWeather(); }
+function updateWeather() {
+  const city = document.getElementById('weatherCity').value;
+  const d = weatherData[city];
+  document.getElementById('w-icon').textContent = d.icon;
+  document.getElementById('w-temp').textContent = d.temp + '°C';
+  document.getElementById('w-desc').textContent = d.desc;
+  document.getElementById('w-hum').textContent = d.hum;
+  document.getElementById('w-wind').textContent = d.wind;
+  document.getElementById('w-vis').textContent = d.vis;
+  const alert = document.getElementById('weatherAlert');
+  if (d.alert) { alert.style.display='flex'; document.getElementById('alertText').textContent = d.alert; }
+  else alert.style.display = 'none';
+  document.getElementById('forecastRow').innerHTML = d.forecast.map(f => `<div class="forecast-day"><div class="fd-day">${f.d}</div><div class="fd-icon">${f.i}</div><div class="fd-temp">${f.t}</div></div>`).join('');
+  document.getElementById('routeWeatherList').innerHTML = routeWeatherList.map(r => `<div class="rw-item"><div class="rw-icon">${r.icon}</div><div class="rw-info"><div class="rw-route">${r.route}</div><div class="rw-cond">${r.cond}</div></div><div class="rw-temp">${r.temp}</div></div>`).join('');
+}
+
+// ===== REVIEWS =====
+const revData = [
+  { name:'Fatima Malik', av:'FM', color:'#00d4ff', route:'Karachi → Lahore', stars:5, text:'Absolutely seamless experience! The train was on time, clean, and comfortable. The app tracking was spot on. Highly recommend Transitra for long distance travel.', tags:['On Time','Clean','Comfortable'], helpful:42, date:'Jun 1, 2026' },
+  { name:'Usman Ahmed', av:'UA', color:'#7c3aed', route:'Islamabad → Peshawar', stars:4, text:'Great service overall. Bus was slightly delayed by 10 minutes but the driver was courteous and the AC worked perfectly throughout the journey.', tags:['Good Service','AC Working'], helpful:28, date:'May 30, 2026' },
+  { name:'Sana Baig', av:'SB', color:'#10b981', route:'Lahore → Faisalabad', stars:5, text:'Best booking experience I\'ve had! The digital ticket worked at the terminal without any issues. The seat was spacious and the journey smooth.', tags:['Easy Booking','Smooth Ride'], helpful:56, date:'May 28, 2026' },
+  { name:'Bilal Raza', av:'BR', color:'#f59e0b', route:'Karachi → Hyderabad', stars:3, text:'Average experience. The bus departed late and the AC had issues for part of the journey. Staff was helpful though and the booking process was easy.', tags:['Delayed','Staff Helpful'], helpful:14, date:'May 25, 2026' },
+  { name:'Hira Shah', av:'HS', color:'#f43f5e', route:'Quetta → Karachi', stars:5, text:'Outstanding! The overnight train journey was comfortable with great amenities. The Transitra app kept me updated throughout. Will definitely book again.', tags:['Overnight','Great App','Amenities'], helpful:71, date:'May 22, 2026' },
+];
+let userStars = 0;
+function setStars(e) {
+  const s = e.target.closest('span');
+  if (!s) return;
+  userStars = +s.dataset.v;
+  document.querySelectorAll('#starInput span').forEach((sp, i) => sp.classList.toggle('lit', i < userStars));
+}
+function submitReview() {
+  const text = document.getElementById('reviewText').value.trim();
+  if (!text || !userStars) { toast('Please add a rating and review text', '⚠️'); return; }
+  const newRev = { name:'Ahmed Khan', av:'AK', color:'#00d4ff', route:'Custom Route', stars:userStars, text, tags:['Verified'], helpful:0, date:'Just now' };
+  revData.unshift(newRev);
+  renderReviews();
+  document.getElementById('reviewText').value = '';
+  userStars = 0;
+  document.querySelectorAll('#starInput span').forEach(s => s.classList.remove('lit'));
+  toast('Review submitted! Thank you ⭐', '✨');
+}
+function renderReviews() {
+  document.getElementById('reviewsList').innerHTML = revData.map(r => `
+    <div class="rev-card">
+      <div class="rev-top">
+        <div class="rev-av" style="background:${r.color}">${r.av}</div>
+        <div class="rev-meta">
+          <div class="rev-name">${r.name}</div>
+          <div class="rev-info">${r.route} · Verified</div>
+        </div>
+        <div class="rev-stars">${'⭐'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
+      </div>
+      <div class="rev-text">${r.text}</div>
+      <div class="rev-tags">${r.tags.map(t=>`<span class="rev-tag">${t}</span>`).join('')}</div>
+      <div class="rev-footer">
+        <span class="rev-helpful" onclick="this.textContent='👍 Helpful (' + (parseInt(this.textContent.match(/\d+/)?.[0]||0)+1) + ')'">👍 Helpful (${r.helpful})</span>
+        <span class="rev-date">${r.date}</span>
+      </div>
+    </div>`).join('');
+}
+function sortRevs(v) {
+  if (v === 'top') revData.sort((a,b) => b.stars - a.stars);
+  else if (v === 'low') revData.sort((a,b) => a.stars - b.stars);
+  renderReviews();
+}
+function filterRevs(v, el) {
+  document.querySelectorAll('.filter-sort .chip').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  const f = v === 'all' ? revData : revData.filter(r => r.stars === +v);
+  document.getElementById('reviewsList').innerHTML = f.map(r => `
+    <div class="rev-card">
+      <div class="rev-top">
+        <div class="rev-av" style="background:${r.color}">${r.av}</div>
+        <div class="rev-meta"><div class="rev-name">${r.name}</div><div class="rev-info">${r.route}</div></div>
+        <div class="rev-stars">${'⭐'.repeat(r.stars)}${'☆'.repeat(5-r.stars)}</div>
+      </div>
+      <div class="rev-text">${r.text}</div>
+      <div class="rev-tags">${r.tags.map(t=>`<span class="rev-tag">${t}</span>`).join('')}</div>
+      <div class="rev-footer"><span class="rev-helpful">👍 Helpful (${r.helpful})</span><span class="rev-date">${r.date}</span></div>
+    </div>`).join('');
+}
+
+// ===== TRACKING =====
+let map = null, trackInt = null, selVeh = 0;
+let positions = [0, 0, 0];
+let leafMarkers = [];
+const vehicles = [
+  { id:'BUS-042', type:'Bus', route:'Karachi → Hyderabad', speed:78, color:'#00d4ff', cls:'vi-b', em:'🚌',
+    path:[[24.8607,67.0011],[24.9,67.2],[25.0,67.4],[25.2,67.8],[25.3792,68.3682]] },
+  { id:'TRN-017', type:'Train', route:'Lahore → Islamabad', speed:120, color:'#7c3aed', cls:'vi-t', em:'🚂',
+    path:[[31.5204,74.3587],[31.8,73.9],[32.2,73.1],[32.9,72.4],[33.7294,73.0931]] },
+  { id:'TAX-128', type:'Taxi', route:'Islamabad → Rawalpindi', speed:55, color:'#fbbf24', cls:'vi-x', em:'🚕',
+    path:[[33.7294,73.0931],[33.70,73.07],[33.65,73.06],[33.6007,73.0479]] },
+];
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl:false }).setView([30.3753, 69.3451], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OSM' }).addTo(map);
+  L.control.zoom({ position:'bottomright' }).addTo(map);
+  vehicles.forEach((v, i) => {
+    L.polyline(v.path, { color:v.color, weight:3, opacity:0.35, dashArray:'6 8' }).addTo(map);
+    const icon = L.divIcon({ html:`<div style="background:${v.color};border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid #fff;box-shadow:0 0 10px ${v.color}99">${v.em}</div>`, iconSize:[22,22], className:'' });
+    leafMarkers.push(L.marker(v.path[0], { icon }).addTo(map).bindPopup(`<b>${v.id}</b><br>${v.route}`));
+  });
+  document.getElementById('vehicleList').innerHTML = vehicles.map((v,i) => `
+    <div class="vehicle-item ${i===0?'sel-v':''}" onclick="selVehicle(${i})">
+      <div class="v-icon ${v.cls}">${v.em}</div>
+      <div class="v-det"><div class="v-id">${v.id}</div><div class="v-rt">${v.route}</div></div>
+      <div class="v-spd"><span class="sp-v">${v.speed}</span><span class="sp-u">km/h</span></div>
+    </div>`).join('');
+  renderJourney(0);
+}
+function selVehicle(i) {
+  selVeh = i;
+  document.querySelectorAll('.vehicle-item').forEach((el,j) => el.classList.toggle('sel-v', j===i));
+  if (map) map.panTo(vehicles[i].path[positions[i]]);
+  renderJourney(i);
+}
+function renderJourney(i) {
+  const v = vehicles[i];
+  const stops = ['Departure','Midpoint A','Midpoint B','Destination'];
+  const times = ['08:00','10:30','13:00','16:30'];
+  const cur = Math.min(Math.floor((positions[i]/v.path.length)*stops.length), stops.length-1);
+  document.getElementById('journeyTrack').innerHTML = stops.map((s,j) => `
+    <div class="progress-stop">
+      <div class="stop-dot ${j<cur?'done':j===cur?'current':'upcoming'}"></div>
+      ${j<stops.length-1?`<div class="stop-line ${j<cur?'done':j===cur?'partial':''}"></div>`:''}
+      <div class="stop-name">${s}</div>
+      <div class="stop-time">${times[j]}</div>
+      ${j===cur?'<div class="stop-note">▶ Currently here</div>':''}
+    </div>`).join('');
+}
+function startTrack() {
+  if (trackInt) return;
+  toast('Live tracking started! 📡', '📡');
+  trackInt = setInterval(() => {
+    vehicles.forEach((v,i) => { if(positions[i]<v.path.length-1) positions[i]++; if(leafMarkers[i]) leafMarkers[i].setLatLng(v.path[positions[i]]); });
+    if (map) map.panTo(vehicles[selVeh].path[positions[selVeh]]);
+    renderJourney(selVeh);
+    document.querySelectorAll('.sp-v').forEach((el,i) => { el.textContent = vehicles[i].speed + Math.floor(Math.random()*8-4); });
+  }, 1800);
+}
+function stopTrack() { clearInterval(trackInt); trackInt=null; toast('Tracking paused.','⏸️'); }
+
+// ===== ADMIN =====
+const txData = [
+  { id:'TX8472',route:'KHI → LHE',amt:'₨2,646',status:'ts-ok',sl:'Paid',time:'2m ago' },
+  { id:'TX8471',route:'ISB → PEW',amt:'₨1,440',status:'ts-ok',sl:'Paid',time:'8m ago' },
+  { id:'TX8470',route:'LHE → FSD',amt:'₨975',status:'ts-del',sl:'Pending',time:'15m ago' },
+  { id:'TX8469',route:'KHI → HYD',amt:'₨720',status:'ts-ok',sl:'Paid',time:'22m ago' },
+  { id:'TX8468',route:'QTA → KHI',amt:'₨2,185',status:'ts-can',sl:'Cancelled',time:'1h ago' },
+];
+const adminAlertsData = [
+  { icon:'⚠️', color:'rgba(245,158,11,0.1)', border:'rgba(245,158,11,0.2)', c:'var(--warn)', msg:'BUS-018 offline — maintenance required' },
+  { icon:'🌧️', color:'rgba(0,212,255,0.06)', border:'rgba(0,212,255,0.15)', c:'var(--accent)', msg:'Rain advisory on Lahore–ISB route' },
+  { icon:'🔴', color:'rgba(244,63,94,0.08)', border:'rgba(244,63,94,0.15)', c:'var(--danger)', msg:'Platform 3 Karachi — overcrowding alert' },
+];
+const chartColors = ['#00d4ff','#0099cc','#7c3aed','#10b981','#f59e0b','#f43f5e','#00d4ff'];
+const days7 = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const vals7 = [320,480,410,560,640,820,590];
+let adminMap2 = null;
+function initAdmin() {
+  // bar chart
+  document.getElementById('barChart').innerHTML = vals7.map((v,i) => `
+    <div class="bar-col">
+      <div class="bar" style="height:${Math.round((v/820)*100)}%;background:linear-gradient(to top,${chartColors[i]},${chartColors[i]}88)">
+        <div class="bar-tip">${v} bookings</div>
+      </div>
+      <div class="bar-lbl">${days7[i]}</div>
+    </div>`).join('');
+  // tx table
+  document.getElementById('txTable').innerHTML = txData.map(t => `
+    <tr><td style="color:var(--text2);font-size:0.75rem">${t.id}</td><td class="td-route">${t.route}</td><td style="color:var(--accent);font-weight:600">${t.amt}</td><td><span class="td-status ${t.status}">${t.sl}</span></td><td style="color:var(--muted)">${t.time}</td></tr>`).join('');
+  // alerts
+  document.getElementById('adminAlerts').innerHTML = adminAlertsData.map(a => `
+    <div style="background:${a.color};border:1px solid ${a.border};border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:0.8rem;color:${a.c}">
+      <span>${a.icon}</span><span>${a.msg}</span>
+    </div>`).join('');
+  // mini map
+  if (!adminMap2) {
+    adminMap2 = L.map('adminMap', { zoomControl:false, attributionControl:false }).setView([30.3753,69.3451],4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(adminMap2);
+    [[24.86,67.01],[31.52,74.36],[33.73,73.09],[25.38,68.37],[30.18,67.01]].forEach(p => L.circleMarker(p,{radius:5,color:'#00d4ff',fillColor:'#00d4ff',fillOpacity:0.8}).addTo(adminMap2));
+  }
+}
+function cpBtn(el) {
+  document.querySelectorAll('.cp-btn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  const newVals = vals7.map(v => Math.round(v*(0.8+Math.random()*0.6)));
+  document.getElementById('barChart').innerHTML = newVals.map((v,i) => `
+    <div class="bar-col">
+      <div class="bar" style="height:${Math.round((v/Math.max(...newVals))*100)}%;background:linear-gradient(to top,${chartColors[i]},${chartColors[i]}88)">
+        <div class="bar-tip">${v} bookings</div>
+      </div>
+      <div class="bar-lbl">${days7[i]}</div>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>
